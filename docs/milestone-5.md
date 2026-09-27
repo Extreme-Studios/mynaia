@@ -1,5 +1,17 @@
 # Milestone 5 — Product UI, PWA, Multi-Mode
 
+## Dr. Paws Persistent Memory
+
+Migrasi `004_dr_paws_subject_memory.sql` menambah tabel `naya_subjects` dan `subject_id` nullable pada sessions, summaries, memories, dan open loops. Baris Naya tetap `subject_id=NULL`. Semua sesi Dr. Paws lama tanpa subject dimigrasikan ke **Profil lama** per owner, tanpa menghapus transkrip. Constraint DB mewajibkan subject untuk baris Dr. Paws baru dan keunikan fakta/open loop kini mencakup subject. RLS pada tabel subject aktif; hanya service role backend yang dapat mengaksesnya.
+
+UI Dr. Paws menampilkan **Siapa yang akan ngobrol?**, tambah profil, dan reset ingatan profil terpilih. Satu profil dipilih otomatis; jika lebih dari satu, pengguna memilih secara eksplisit. API `GET/POST /api/dr-paws/subjects` dan `POST /api/dr-paws/subjects/:id/reset` memakai gerbang password awal. Reset memerlukan konfirmasi browser dan `confirm:true` di backend, lalu menghapus hanya memori turunan subject yang dipilih. Transkrip historis tetap ada; sesi yang dimulai sebelum reset tidak diekstrak ulang.
+
+Sebelum Start, backend memvalidasi subject dan mengambil dari Supabase maksimal 6 fakta, 1 ringkasan terakhir, 2 open loop. `conversational_context` dibatasi 2.200 karakter dan disuntikkan ke Tavus untuk recall natural. Setelah End, transkrip tetap diarsip; Gemini membuat ringkasan dan hanya fakta ringan anak. Filter persisten menolak diagnosis, kesimpulan psikologis, data medis, alamat rinci, nomor identitas, kredensial, dan pembayaran. Naya tetap memakai pipeline lama. Status `/api/memory/status` kini menambah `drPaws` berisi enabled, subjectsCount, dan pendingSessions tanpa mengungkap isi memori. Tidak ada Tavus built-in memory, PAL baru, atau auto-start conversation.
+
+Migrasi diterapkan pada proyek Supabase `mynaia`: verifikasi SQL menghasilkan 1 profil lama, 0 sesi Dr. Paws tanpa subject, 0 sesi Naya dengan subject, RLS subject aktif, dan constraint unik terpasang. 16 memori Naya yang ada tetap tersimpan.
+
+Validasi kode: `npm run check`, `npm test`, `npm run build`, `git diff --check`. Test mock tidak memakai menit Tavus. Recall natural, kualitas respons, dan isolasi dalam sesi nyata tetap perlu human test dengan dua profil dan satu percakapan per profil bila pengguna memilih melakukannya.
+
 ## Multi-Tavus Profile Engine
 
 Patch ini mendukung delapan profil bernama **Tavis 1–8**. Semua delapan API key yang disimpan di Windows Credential Manager berhasil diautentikasi dengan API Tavus GET. Stock Face Naya dan Dr. Paws muncul pada daftar Face seluruh profil. Pada patch engine awal, PAL baru ada di profil 1; kemudian atas permintaan pengguna dibuat satu PAL Naya dan satu PAL Dr. Paws pada masing-masing akun Tavis 2–8. Semua 14 PAL baru diperiksa kembali dengan GET. ID PAL dipasang khusus per profil di environment lokal dan Vercel. PAL profil 1 tidak disalin lintas akun. Tidak ada conversation dibuat dan tidak ada auto rotasi.
@@ -18,12 +30,12 @@ Status: implementation ready; human UI/live validation is still required. No Tav
 
 - `/` is the mode selector. `/naya` and `/dr-paws` are refresh-safe mode screens. Both use the same app and Supabase project.
 - Naya keeps PAL `p54bfaf633c5`, stock Face `rc9cff32ceba`, the existing runtime persona, and Supabase memory/context plus Gemini post-call extraction.
-- Dr. Paws uses the stock Tavus Face `r21a52c53fa4` found by API list and a single new PAL `pf2c904714a5`. Its child-friendly prompt lives in `character/dr-paws/`; the PAL uses Indonesian, `tavus-auto`, Sparrow-2, low patience, medium interruptibility, idle off, and the Tavus-hosted fast model. No assessment, diagnosis, clinical scoring, or child profile extraction was added.
+- Dr. Paws uses the stock Tavus Face `r21a52c53fa4` found by API list and a single new PAL `pf2c904714a5`. Its child-friendly prompt lives in `character/dr-paws/`; the PAL uses Indonesian, `tavus-auto`, Sparrow-2, low patience, medium interruptibility, idle off, and the Tavus-hosted fast model. The persistent memory patch stores light child-safe facts per subject, without assessment, diagnosis, or clinical scoring.
 - Server environment uses `TAVUS_NAYA_PAL_ID` with `TAVUS_PAL_ID` fallback, plus `TAVUS_DR_PAWS_PAL_ID` and `TAVUS_DR_PAWS_FACE_ID`. API keys stay server-side. Dr. Paws Start is unavailable when its configuration is absent.
 
 ## Supabase namespace
 
-`supabase/migrations/002_mode_namespaces.sql` adds `mode` to sessions, summaries, memories, open loops, and profile. Existing rows default to `naya`; the migration was applied to the existing `mynaia` Supabase project and checked. At migration time, the database contained two Naya sessions, seven Naya memories, and one Naya profile. The application filters every mode-specific read/write by `mode`. Dr. Paws archives sessions and transcript text under `dr_paws`, without reading Naya facts or creating a permanent child profile. Naya retains the Milestone 4 flow and stable single-user identity. `conversation_messages` inherits isolation through its session ID. Future multi-user work must use distinct account user IDs; device/IP are not identity.
+`supabase/migrations/002_mode_namespaces.sql` adds `mode` to sessions, summaries, memories, open loops, and profile. Existing rows default to `naya`; the migration was applied to the existing `mynaia` Supabase project and checked. At migration time, the database contained two Naya sessions, seven Naya memories, and one Naya profile. The newer `004_dr_paws_subject_memory.sql` adds per-child UUID scope for Dr. Paws. Naya retains the Milestone 4 flow and stable single-user identity. `conversation_messages` inherits isolation through its session ID. Future multi-user work must use distinct account user IDs; device/IP are not identity.
 
 ## Session and controls
 
@@ -48,4 +60,4 @@ Manual plan, only when the user chooses to spend Tavus minutes:
 3. Optional duration test: select 3 minutes and observe exact expiry; no automated wait or extra session was run.
 4. Dr. Paws: start only after checking minute balance, verify the cartoon Face, Bahasa Indonesia, child-friendly behavior, and absence of Naya personal recall.
 
-Future Dr. Paws assessment could add structured interviews, parent/professional review, and reports in a later milestone. None of those systems exists in Milestone 5.
+No Dr. Paws assessment, structured interviews, parent/professional review, or clinical reports are part of this patch.

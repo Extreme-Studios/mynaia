@@ -77,6 +77,7 @@ test('switch admin hanya mengubah sesi berikutnya; PAL, Face dan key tetap per p
   let nextId = 1;
   const store = { configured: true,
     select: async (table, filters) => {
+      if (table === 'subjects') return [{ id: '11111111-1111-4111-8111-111111111111', display_name: 'Anak tes' }];
       if (table === 'app_settings') return [{ setting_value: active }];
       if (table === 'conversation_sessions' && filters?.tavus_conversation_id) {
         const row = sessions.get(filters.tavus_conversation_id.slice(3));
@@ -128,7 +129,7 @@ test('switch admin hanya mengubah sesi berikutnya; PAL, Face dan key tetap per p
   assert.equal(second.status, 201);
   assert.deepEqual(calls[3], { type: 'create', key: 'key-two', pal: 'p-naya-two', face: 'r-naya-two',
     mode: 'naya', context: 'same Supabase memory' });
-  const paws = await invoke(handler, 'POST', 'conversations', { cookie, body: { mode: 'dr_paws' } });
+  const paws = await invoke(handler, 'POST', 'conversations', { cookie, body: { mode: 'dr_paws', subjectId: '11111111-1111-4111-8111-111111111111' } });
   assert.equal(paws.status, 201);
   assert.equal(calls[4].pal, 'p-paws-two');
   assert.equal(calls[4].face, 'r-paws-two');

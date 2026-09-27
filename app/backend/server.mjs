@@ -7,6 +7,7 @@ import { makeTavusClient, TavusError } from './tavus.mjs';
 import { geminiConfig } from './gemini.mjs';
 import { makeSupabaseStore, StorageError } from './supabase.mjs';
 import { makeMemoryService } from './memory-service.mjs';
+import { makeSubjectService, SubjectError } from './subjects.mjs';
 import { parseMode, parseDuration } from './modes.mjs';
 import { PROFILE_COUNT, makeActiveProfileStore, modeProfileError, parseProfile, publicProfileStatus, resolveTavusProfile } from './tavus-profiles.mjs';
 import { authorized, equalSecret, sameOrigin, sessionToken } from './access-auth.mjs';
@@ -62,11 +63,13 @@ export function createNayaServer({ client: injectedClient, gemini = geminiConfig
       faceId: mode === 'naya' ? config.nayaFaceId : config.drPawsFaceId, mode });
   };
   const profiles = activeProfileStore || makeActiveProfileStore({ store });
+  const subjects = makeSubjectService({ store });
   const accessCode = env.NAYA_ACCESS_CODE?.trim() || '';
   const memory = injectedMemory || makeMemoryService({ store, tavus: client, palId: first.nayaPalId,
     faceId: first.nayaFaceId, tavusForProfile: (profile) => clientForProfile(profile, 'naya') });
   const drMemory = injectedDrMemory || makeMemoryService({ store, tavus: drClient, mode: 'dr_paws',
     palId: first.drPawsPalId, faceId: first.drPawsFaceId,
+    subjects,
     tavusForProfile: (profile) => clientForProfile(profile, 'dr_paws') });
   let activeConversation;
   let creating = false;
@@ -109,8 +112,21 @@ export function createNayaServer({ client: injectedClient, gemini = geminiConfig
         throw new TavusError('ACCESS_REQUIRED', 'Masukkan kode akses dulu.', 401);
       }
       if (request.method === 'GET' && path === '/api/memory/status') {
-        json(response, 200, await memory.status());
+        const [naya, drPawsStatus] = await Promise.all([memory.status(), drMemory.status()]);
+        json(response, 200, { ...naya, drPaws: drPawsStatus });
         return;
+      }
+      if (path === '/api/dr-paws/subjects' || /^\/api\/dr-paws\/subjects\/[^/]+\/reset$/.test(path)) {
+        if (request.method === 'GET' && path === '/api/dr-paws/subjects') {
+          json(response, 200, { subjects: await subjects.list() }); return;
+        }
+        if (request.method === 'POST' && sameOrigin(request)) {
+          const body = await readJson(request);
+          if (path === '/api/dr-paws/subjects') { json(response, 201, await subjects.create(body)); return; }
+          const id = path.split('/')[4];
+          json(response, 200, await subjects.reset(id, body.confirm === true)); return;
+        }
+        throw new TavusError('INVALID_REQUEST', 'Permintaan profil tidak valid.', 400);
       }
       if ((request.method === 'GET' && path === '/api/admin/tavus-profiles') ||
           (request.method === 'POST' && (path === '/api/admin/tavus-profile' || path === '/api/admin/tavus-profile/inspect'))) {
@@ -177,9 +193,10 @@ export function createNayaServer({ client: injectedClient, gemini = geminiConfig
           if (configError) throw configError;
           const selectedMemory = mode === 'dr_paws' ? drMemory : memory;
           const selectedClient = clientForProfile(activeProfile, mode);
-          const context = await selectedMemory.prepareContext();
+          const subjectId = mode === 'dr_paws' ? body.subjectId : undefined;
+          const context = await selectedMemory.prepareContext({ subjectId });
           const session = await selectedClient.createConversation({ conversationalContext: context, durationMinutes: durationSeconds / 60 });
-          try { await selectedMemory.recordStarted(session.conversationId, { profileUsed: activeProfile,
+          try { await selectedMemory.recordStarted(session.conversationId, { profileUsed: activeProfile, subjectId,
             sessionPalId: mode === 'naya' ? config.nayaPalId : config.drPawsPalId,
             sessionFaceId: mode === 'naya' ? config.nayaFaceId : config.drPawsFaceId }); }
           catch (error) {
@@ -229,7 +246,7 @@ export function createNayaServer({ client: injectedClient, gemini = geminiConfig
       });
       response.end(body);
     } catch (error) {
-      if (error instanceof TavusError) {
+      if (error instanceof TavusError || error instanceof SubjectError) {
         json(response, error.status, { error: error.message, code: error.code });
       } else if (error instanceof StorageError) {
         json(response, 503, { error: 'Penyimpanan memori belum tersedia.', code: error.code });

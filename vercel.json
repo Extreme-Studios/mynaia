@@ -7,6 +7,8 @@
     { "source": "/api/gemini/status", "destination": "/api/handler?route=gemini-status" },
     { "source": "/api/tavus/status", "destination": "/api/handler?route=tavus-status" },
     { "source": "/api/memory/status", "destination": "/api/handler?route=memory-status" },
+    { "source": "/api/dr-paws/subjects", "destination": "/api/handler?route=subjects" },
+    { "source": "/api/dr-paws/subjects/:id/reset", "destination": "/api/handler?route=subject-reset&id=:id" },
     { "source": "/api/modes/status", "destination": "/api/handler?route=mode-status" },
     { "source": "/api/admin/tavus-profiles", "destination": "/api/handler?route=admin-profiles" },
     { "source": "/api/admin/tavus-profile", "destination": "/api/handler?route=admin-profile" },

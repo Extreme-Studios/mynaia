@@ -2,6 +2,7 @@ import { makeTavusClient, TavusError } from '../app/backend/tavus.mjs';
 import { geminiConfig } from '../app/backend/gemini.mjs';
 import { makeSupabaseStore, StorageError } from '../app/backend/supabase.mjs';
 import { makeMemoryService } from '../app/backend/memory-service.mjs';
+import { makeSubjectService, SubjectError } from '../app/backend/subjects.mjs';
 import { parseMode, parseDuration } from '../app/backend/modes.mjs';
 import { PROFILE_COUNT, makeActiveProfileStore, modeProfileError, parseProfile, publicProfileStatus, resolveTavusProfile } from '../app/backend/tavus-profiles.mjs';
 import { authorized, equalSecret, sameOrigin, sessionToken } from '../app/backend/access-auth.mjs';
@@ -51,12 +52,16 @@ export function createVercelHandler({ env = process.env, client, memory, store: 
   const accessCode = env.NAYA_ACCESS_CODE?.trim() || '';
   const store = injectedStore || makeSupabaseStore({ url: env.SUPABASE_URL, key: env.SUPABASE_SERVICE_ROLE_KEY });
   const profiles = activeProfileStore || makeActiveProfileStore({ store });
+  const subjects = makeSubjectService({ store });
   const memoryService = memory || makeMemoryService({ store, tavus, palId: firstProfile.nayaPalId, faceId: firstProfile.nayaFaceId,
     tavusForProfile: (profile) => clientForProfile(profile, 'naya'),
     extract: (messages) => import('../app/backend/memory-extract.mjs').then(({ extractWithGemini }) =>
       extractWithGemini(messages, { apiKey: env.GEMINI_API_KEY, model: env.GEMINI_MEMORY_MODEL || 'gemini-2.5-flash' })) });
   const drMemory = makeMemoryService({ store, tavus: drPaws, palId: firstProfile.drPawsPalId,
     faceId: firstProfile.drPawsFaceId, mode: 'dr_paws',
+    subjects,
+    extract: (messages) => import('../app/backend/memory-extract.mjs').then(({ extractWithGemini }) =>
+      extractWithGemini(messages, { apiKey: env.GEMINI_API_KEY, model: env.GEMINI_MEMORY_MODEL || 'gemini-2.5-flash', mode: 'dr_paws' })),
     tavusForProfile: (profile) => clientForProfile(profile, 'dr_paws') });
 
   return async function handler(request, response) {
@@ -71,8 +76,22 @@ export function createVercelHandler({ env = process.env, client, memory, store: 
         throw new TavusError('ACCESS_REQUIRED', 'Masukkan kode akses dulu.', 401);
       }
       if (request.method === 'GET' && route === 'memory-status') {
-        json(response, 200, await memoryService.status());
+        const [naya, drPawsStatus] = await Promise.all([memoryService.status(), drMemory.status()]);
+        json(response, 200, { ...naya, drPaws: drPawsStatus });
         return;
+      }
+      if (route === 'subjects' || route === 'subject-reset') {
+        if (request.method === 'GET' && route === 'subjects') {
+          json(response, 200, { subjects: await subjects.list() });
+          return;
+        }
+        if (request.method === 'POST' && sameOrigin(request)) {
+          const body = await readJson(request);
+          if (route === 'subjects') { json(response, 201, await subjects.create(body)); return; }
+          json(response, 200, await subjects.reset(url.searchParams.get('id'), body.confirm === true));
+          return;
+        }
+        throw new TavusError('INVALID_REQUEST', 'Permintaan profil tidak valid.', 400);
       }
       if ((request.method === 'GET' && route === 'admin-profiles') ||
           (request.method === 'POST' && (route === 'admin-profile' || route === 'admin-profile-inspect'))) {
@@ -150,9 +169,10 @@ export function createVercelHandler({ env = process.env, client, memory, store: 
           if (configError) throw configError;
           const selectedMemory = mode === 'naya' ? memoryService : drMemory;
           const selectedTavus = clientForProfile(activeProfile, mode);
-          const context = await selectedMemory.prepareContext();
+          const subjectId = mode === 'dr_paws' ? body.subjectId : undefined;
+          const context = await selectedMemory.prepareContext({ subjectId });
           const session = await selectedTavus.createConversation({ conversationalContext: context, durationMinutes: durationSeconds / 60 });
-          try { await selectedMemory.recordStarted(session.conversationId, { profileUsed: activeProfile,
+          try { await selectedMemory.recordStarted(session.conversationId, { profileUsed: activeProfile, subjectId,
             sessionPalId: mode === 'naya' ? current.nayaPalId : current.drPawsPalId,
             sessionFaceId: mode === 'naya' ? current.nayaFaceId : current.drPawsFaceId }); }
           catch (error) {
@@ -194,7 +214,7 @@ export function createVercelHandler({ env = process.env, client, memory, store: 
       }
       json(response, 404, { error: 'Tidak ditemukan.' });
     } catch (error) {
-      if (error instanceof TavusError) json(response, error.status, { error: error.message, code: error.code });
+      if (error instanceof TavusError || error instanceof SubjectError) json(response, error.status, { error: error.message, code: error.code });
       else if (error instanceof StorageError) json(response, 503, { error: 'Penyimpanan memori belum tersedia.', code: error.code });
       else {
         console.error('Vercel API error:', error?.name || 'UnknownError');

@@ -22,6 +22,8 @@ const schema = {
 };
 
 const instruction = `Ekstrak memori percakapan Naya dalam JSON. Bahasa Indonesia. Ringkas sesi, tone, topik, follow-up. Buat memori hanya untuk fakta yang mungkin berguna di sesi mendatang; abaikan filler. normalized_key harus stabil untuk fakta yang sama (contoh preference:coffee), walau parafrase/bahasa berbeda. Jika fakta baru mengganti fakta lama, pakai key yang sama atau isi supersedes_keys; jangan simpan dua fakta yang kontradiktif sebagai aktif. Tandai open loop spesifik, dan resolved_open_loop_keys untuk loop yang sudah dijawab. Jangan profilkan diagnosis medis/mental otomatis. Jangan keluarkan API key, password, token, kartu pembayaran, credential, atau rahasia. Jangan mengarang fakta atau emosi dari avatar/kamera. Maksimal 8 memori per sesi.`;
+const childInstruction = `Ekstrak memori aman percakapan Dr. Paws untuk anak dalam JSON Bahasa Indonesia. Simpan hanya fakta ringan yang dinyatakan jelas oleh anak: nama panggilan, hobi, permainan/hewan/makanan favorit, kegiatan sekolah ringan, teman yang disebut casual, gambar atau mainan yang dibuat, rencana ringan, serta hal yang ingin ditanyakan lagi. Ringkas sesi secara singkat. normalized_key stabil untuk satu topik (contoh preference:favorite_color); bila preferensi berubah gunakan key yang sama agar fakta terbaru menang. Maksimal 6 memori. Jangan menyimpulkan kepribadian, kondisi mental, IQ, trauma, autisme, ADHD, diagnosis, risiko klinis, atau kondisi medis. Jangan simpan alamat lengkap, nomor identitas, nomor telepon, lokasi rinci, password, API key, token, pembayaran, atau informasi sensitif lain. Jangan mengarang; bila tidak ada fakta aman, keluarkan array kosong. Open loop hanya topik ringan untuk obrolan berikutnya. Jangan minta anak mengungkap rahasia.`;
+const childSensitive = /\b(diagnos\w*|depresi|bipolar|skizofrenia|autis\w*|adhd|trauma|iq|kepribadian|gangguan mental|risiko klinis|perkembangan anak|penyakit|obat|alamat|jalan\s+\w+|nomor telepon|nomor hp|nik|ktp|password|kata sandi|api key|token|kartu kredit|rekening|pin)\b|\b(?:\+?62|0)8\d{8,12}\b|\b\d{16}\b/i;
 
 const cleanText = (value, max = 400) => redactSensitive(String(value || '').trim()).slice(0, max);
 const cleanKey = (value) => String(value || '').toLowerCase().replace(/[^a-z0-9:_-]/g, '_').slice(0, 100);
@@ -51,8 +53,24 @@ export function validateExtraction(value) {
   };
 }
 
+export function validateChildExtraction(value) {
+  const result = validateExtraction(value);
+  const safe = (text) => !childSensitive.test(text) && !text.includes('[REDACTED_');
+  result.memories = result.memories.filter((item) =>
+    ['PROFILE', 'PREFERENCE', 'EPISODIC', 'PROJECT', 'ROUTINE', 'OPEN_LOOP'].includes(item.category) &&
+    safe(item.content) && safe(item.normalized_key));
+  result.open_loops = result.open_loops.filter((item) => safe(item.content) && safe(item.normalized_key));
+  result.resolved_open_loop_keys = result.resolved_open_loop_keys.filter(safe);
+  result.summary = safe(result.summary) ? result.summary : 'Percakapan Dr. Paws selesai.';
+  result.tone = safe(result.tone) ? result.tone : '';
+  result.topics = result.topics.filter(safe);
+  result.follow_ups = result.follow_ups.filter(safe);
+  result.profile = {};
+  return result;
+}
+
 export async function extractWithGemini(messages, { apiKey = process.env.GEMINI_API_KEY,
-  model = process.env.GEMINI_MEMORY_MODEL || 'gemini-2.5-flash', fetchImpl = fetch } = {}) {
+  model = process.env.GEMINI_MEMORY_MODEL || 'gemini-2.5-flash', fetchImpl = fetch, mode = 'naya' } = {}) {
   if (!apiKey?.trim()) throw new Error('GEMINI_KEY_REQUIRED');
   const transcript = messages.filter((x) => x.role === 'user' || x.role === 'assistant')
     .map((x) => `${x.role}: ${redactSensitive(x.content)}`).join('\n').slice(0, 30000);
@@ -60,7 +78,7 @@ export async function extractWithGemini(messages, { apiKey = process.env.GEMINI_
   let response;
   try { response = await fetchImpl(endpoint, { method: 'POST',
     headers: { 'x-goog-api-key': apiKey, 'content-type': 'application/json' },
-    body: JSON.stringify({ systemInstruction: { parts: [{ text: instruction }] },
+    body: JSON.stringify({ systemInstruction: { parts: [{ text: mode === 'dr_paws' ? childInstruction : instruction }] },
       contents: [{ role: 'user', parts: [{ text: transcript }] }],
       generationConfig: { responseMimeType: 'application/json', responseSchema: schema, temperature: 0.2, maxOutputTokens: 1400 } }),
     signal: AbortSignal.timeout(30000),
@@ -68,6 +86,6 @@ export async function extractWithGemini(messages, { apiKey = process.env.GEMINI_
   if (!response.ok) throw new Error(`GEMINI_HTTP_${response.status}`);
   let raw;
   try { raw = await response.json(); } catch { throw new Error('GEMINI_INVALID_RESPONSE'); }
-  try { return validateExtraction(JSON.parse(raw.candidates?.[0]?.content?.parts?.[0]?.text || '')); }
+  try { return (mode === 'dr_paws' ? validateChildExtraction : validateExtraction)(JSON.parse(raw.candidates?.[0]?.content?.parts?.[0]?.text || '')); }
   catch { throw new Error('GEMINI_EXTRACTION_INVALID'); }
 }

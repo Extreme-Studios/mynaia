@@ -8,7 +8,20 @@ Password akses awal menjadi satu-satunya gerbang dashboard dan Settings. API pro
 
 Satu situs menyediakan home `/`, Naya `/naya`, dan Dr. Paws `/dr-paws`. Browser memakai UI video call vanilla JS; Vercel memegang credential dan memilih PAL/Face dari mode. Naya memakai PAL existing `p54bfaf633c5` dan Face `rc9cff32ceba`; Dr. Paws memakai PAL `pf2c904714a5` dan Face `r21a52c53fa4`. Frontend tidak menerima API key.
 
-Supabase adalah satu-satunya memori permanen. Migrasi `002_mode_namespaces.sql` memberi default `mode=naya` untuk seluruh data lama dan memungkinkan namespace `dr_paws` per user. Semua query memori Naya dibatasi `mode=naya`; Dr. Paws menyimpan session/transcript dengan `mode=dr_paws`, tanpa ekstraksi profil anak. Tavus hanya menangani percakapan realtime dan sumber transkrip. Mode dipilih sebelum call; backend menolak durasi selain 3/5/10/20 menit.
+Supabase adalah satu-satunya memori permanen. Migrasi `002_mode_namespaces.sql` memberi default `mode=naya` untuk seluruh data lama; `004_dr_paws_subject_memory.sql` menambah `subject_id` UUID untuk Dr. Paws. Semua query memori Naya dibatasi `mode=naya`; Dr. Paws memakai `user_id + mode=dr_paws + subject_id` untuk session, summary, memori, dan open loop. Tavus hanya menangani percakapan realtime dan sumber transkrip. Mode dipilih sebelum call; backend menolak durasi selain 3/5/10/20 menit.
+
+## Dr. Paws Persistent Memory
+
+```text
+Supabase
+├── Naya memory (mode=naya, subject_id=NULL)
+└── Dr. Paws (mode=dr_paws)
+    ├── Subject A memory (subject_id UUID A)
+    ├── Subject B memory (subject_id UUID B)
+    └── ...
+```
+
+`naya_subjects` menyimpan pemilik, nama tampilan, nama panggilan opsional, dan waktu reset. UI meminta profil aktif sebelum Start; backend memvalidasi UUID serta kepemilikannya sebelum memanggil Tavus. Sebelum sesi, backend mengambil maksimal enam fakta terbaru, satu ringkasan terakhir, dan dua open loop untuk profil itu; hasilnya dibatasi 2.200 karakter. Setelah sesi, transkrip Tavus masuk ke Supabase, lalu Gemini mengekstrak hanya fakta ringan yang dikatakan anak. Validator menolak label klinis/psikologis dan data sensitif untuk memori persisten. Summary yang sensitif diganti teks netral. Key fakta stabil membuat preferensi terbaru menggantikan versi lama yang aktif. `Reset ingatan` menghapus hanya memori, ringkasan, dan open loop profil terpilih; arsip sesi/transkrip tetap ada. Waktu reset mencegah sesi lama yang tertunda membangun ulang memori tersebut. Status API hanya menampilkan jumlah profil dan sesi pending, tanpa isi memori.
 
 PWA menyimpan shell statis saja. `/api/` selalu jaringan dan tidak pernah masuk cache service worker. Fullscreen dan Wake Lock adalah peningkatan browser yang gagal dengan aman. Iframe Tavus/Daily tetap pemilik kontrol media; host hanya menampilkan status yang dapat dibuktikan. Quality Auto digunakan, Low/High belum tersedia pada integrasi iframe ini. Detail keputusan dan pengujian di `docs/milestone-5.md`.
 

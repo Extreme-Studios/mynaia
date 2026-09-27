@@ -96,8 +96,33 @@ test('Vercel memory status hanya melaporkan Supabase tanpa credential', async ()
   const handler = createVercelHandler({ env: { TAVUS_API_KEY: 'secret', TAVUS_PAL_ID: 'p-existing' },
     client: { configured: true } });
   const response = await invoke(handler, 'GET', '/api/handler?route=memory-status');
-  assert.deepEqual(response.body, { enabled: false, provider: 'supabase', storeConfigured: false, pendingSessions: 0 });
+  assert.deepEqual(response.body, { enabled: false, provider: 'supabase', storeConfigured: false, pendingSessions: 0,
+    drPaws: { enabled: false, provider: 'supabase', storeConfigured: false, pendingSessions: 0 } });
   assert.doesNotMatch(JSON.stringify(response.body), /private|secret|naya_user/);
+});
+
+test('API subject meminta login dan Dr. Paws menolak Start tanpa UUID sebelum Tavus', async () => {
+  let creates = 0;
+  const rows = [];
+  const store = { configured: true,
+    select: async (table, filters = {}) => table === 'subjects' ? rows.filter((row) => !filters.id || filters.id === `eq.${row.id}`) : [],
+    upsert: async (table, row) => { if (table === 'subjects') rows.push(row); },
+  };
+  const handler = createVercelHandler({ env: { NAYA_ACCESS_CODE: 'test-access',
+    TAVUS_API_KEY: 'test-key', TAVUS_DR_PAWS_PAL_ID: 'p-paws', TAVUS_DR_PAWS_FACE_ID: 'r-paws' },
+    store, activeProfileStore,
+    clientFactory: () => ({ createConversation: async () => { creates++; } }) });
+  assert.equal((await invoke(handler, 'GET', '/api/handler?route=subjects')).status, 401);
+  const login = await invoke(handler, 'POST', '/api/handler?route=access-login', { body: { code: 'test-access' } });
+  const cookie = login.headers['set-cookie'].split(';')[0];
+  const created = await invoke(handler, 'POST', '/api/handler?route=subjects', { cookie, body: { displayName: 'Anak tes' } });
+  assert.equal(created.status, 201);
+  assert.match(created.body.id, /^[0-9a-f-]{36}$/);
+  assert.equal((await invoke(handler, 'GET', '/api/handler?route=subjects', { cookie })).body.subjects.length, 1);
+  const missing = await invoke(handler, 'POST', '/api/handler?route=conversations', { cookie, body: { mode: 'dr_paws' } });
+  assert.equal(missing.status, 400);
+  assert.equal(creates, 0);
+  assert.doesNotMatch(JSON.stringify(created.body), /test-key|test-access/);
 });
 
 test('Vercel menyuntik context Supabase, merekam sesi, dan melindungi sync', async () => {

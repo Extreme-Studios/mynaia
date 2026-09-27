@@ -13,6 +13,7 @@ let statusTimer;
 let statusChecking = false;
 let wakeLock;
 let fullscreenFallback = false;
+let subjectId = '';
 
 $('#home').hidden = !isHome;
 $('#call-view').hidden = isHome;
@@ -24,6 +25,7 @@ $('#placeholder-description').textContent = mode === 'naya'
   ? 'Pilih durasi, lalu mulai saat kamu siap.' : 'Cerita santai bersama Dr. Paws. Mulai saat kamu siap.';
 document.body.dataset.mode = mode;
 document.title = isHome ? 'MyNaiA — Teman AI' : `${modeName} — MyNaiA`;
+$('#subject-panel').hidden = mode !== 'dr_paws' || isHome;
 
 function savedDuration() {
   try { const value = localStorage.getItem('mynaia.duration'); return ['3','5','10','20'].includes(value) ? value : '5'; }
@@ -58,7 +60,7 @@ function setAccess(granted) {
 
 const api = {
   start: () => apiRequest('/api/conversations', { method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ mode, durationMinutes: Number($('#duration').value) }) }),
+    body: JSON.stringify({ mode, subjectId: mode === 'dr_paws' ? subjectId : undefined, durationMinutes: Number($('#duration').value) }) }),
   end: async (id) => {
     const result = await apiRequest(`/api/conversations/${encodeURIComponent(id)}/end`, { method: 'POST' });
     setTimeout(() => { apiRequest('/api/memory/sync', { method: 'POST' }).catch(() => {}); }, 8000);
@@ -107,12 +109,15 @@ function render(state) {
   if (isHome) return;
   const active = Boolean(state.session);
   const pending = state.phase === 'connecting';
-  $('#start').disabled = !state.canStart || !accessGranted || !navigator.onLine || !modeReady[mode];
+  $('#start').disabled = !state.canStart || !accessGranted || !navigator.onLine || !modeReady[mode] || (mode === 'dr_paws' && !subjectId);
   $('#start').hidden = active || pending;
   $('#end').disabled = !state.canEnd;
   $('#end').hidden = !active;
   $('#mic-help').hidden = !active;
   $('#duration').disabled = active || pending;
+  $('#subject-select').disabled = active || pending;
+  $('#subject-add-toggle').disabled = active || pending;
+  $('#subject-reset').disabled = active || pending || !subjectId;
   $('#setting-duration').disabled = active || pending;
   $('#status').dataset.state = state.phase;
   const labels = { ready:'Ready', connecting:'Connecting', connected:'Connected — ruang video terbuka',
@@ -163,7 +168,7 @@ function render(state) {
 const controller = createConversationController({ api, render });
 
 $('#start').addEventListener('click', async () => {
-  if (!accessGranted || !modeReady[mode] || !navigator.onLine) return;
+  if (!accessGranted || !modeReady[mode] || !navigator.onLine || (mode === 'dr_paws' && !subjectId)) return;
   if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
     $('#error').hidden = false;
     $('#error').textContent = `${modeName} membutuhkan akses mikrofon agar bisa mendengar kamu. Buka lewat HTTPS dan periksa izin browser.`;
@@ -210,9 +215,50 @@ $('#access-form').addEventListener('submit', async (event) => {
       body: JSON.stringify({ code: $('#access-code').value }) });
     $('#access-code').value = '';
     setAccess(true);
-    if (!isHome) await refreshModeStatus();
+    if (!isHome) { await refreshModeStatus(); if (mode === 'dr_paws') await refreshSubjects(); }
     render(controller.snapshot());
   } catch (error) { $('#access-message').textContent = error.message; }
+});
+
+async function refreshSubjects(preferredId = '') {
+  if (mode !== 'dr_paws' || isHome) return;
+  const data = await apiRequest('/api/dr-paws/subjects');
+  const select = $('#subject-select');
+  select.replaceChildren();
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = data.subjects.length ? 'Pilih profil' : 'Belum ada profil';
+  select.append(placeholder);
+  for (const subject of data.subjects) {
+    const option = document.createElement('option');
+    option.value = subject.id;
+    option.textContent = subject.nickname || subject.display_name;
+    select.append(option);
+  }
+  subjectId = data.subjects.some((item) => item.id === preferredId) ? preferredId : data.subjects.length === 1 ? data.subjects[0].id : '';
+  select.value = subjectId;
+  $('#subject-message').textContent = data.subjects.length ? '' : 'Tambahkan profil sebelum mulai ngobrol.';
+  render(controller.snapshot());
+}
+$('#subject-select').addEventListener('change', () => { subjectId = $('#subject-select').value; render(controller.snapshot()); });
+$('#subject-add-toggle').addEventListener('click', () => { $('#subject-add-form').hidden = !$('#subject-add-form').hidden; });
+$('#subject-add-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  try {
+    const subject = await apiRequest('/api/dr-paws/subjects', { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ displayName: $('#subject-name').value, nickname: $('#subject-nickname').value }) });
+    $('#subject-add-form').reset();
+    $('#subject-add-form').hidden = true;
+    await refreshSubjects(subject.id);
+  } catch (error) { $('#subject-message').textContent = error.message; }
+});
+$('#subject-reset').addEventListener('click', async () => {
+  if (!subjectId || !window.confirm('Hapus ingatan Dr. Paws untuk profil terpilih? Transkrip tetap tersimpan.')) return;
+  try {
+    await apiRequest(`/api/dr-paws/subjects/${encodeURIComponent(subjectId)}/reset`, { method: 'POST',
+      headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true }) });
+    $('#subject-message').textContent = 'Ingatan profil ini sudah direset.';
+  } catch (error) { $('#subject-message').textContent = error.message; }
 });
 
 function setSettings(open) {
@@ -287,6 +333,7 @@ updateOffline();
 apiRequest('/api/access/status').then((data) => {
   setAccess(!data.required || data.authorized);
   if (!accessGranted) return;
+  if (mode === 'dr_paws' && !isHome) refreshSubjects().catch(() => { $('#subject-message').textContent = 'Profil anak belum tersedia.'; });
   if (!isHome) apiRequest('/api/modes/status').then((data) => {
     modeReady.naya = Boolean(data.naya);
     modeReady.dr_paws = Boolean(data.drPaws);

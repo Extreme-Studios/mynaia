@@ -4,10 +4,11 @@ import { makeSupabaseStore, PRIMARY_USER_ID } from '../app/backend/supabase.mjs'
 import { parseTranscript, redactSensitive } from '../app/backend/transcript.mjs';
 import { validateExtraction, extractWithGemini } from '../app/backend/memory-extract.mjs';
 import { buildMemoryContext, makeMemoryService } from '../app/backend/memory-service.mjs';
+import { makeSubjectService } from '../app/backend/subjects.mjs';
 import { FACE_ID, makeTavusClient } from '../app/backend/tavus.mjs';
 
 function fakeStore() {
-  const tables = Object.fromEntries(['users','conversation_sessions','conversation_messages','memories','user_profile','open_loops','session_summaries'].map((x) => [x, []]));
+  const tables = Object.fromEntries(['users','conversation_sessions','conversation_messages','memories','user_profile','open_loops','session_summaries','subjects'].map((x) => [x, []]));
   let next = 1;
   const matching = (row, filters) => Object.entries(filters).every(([key, filter]) => {
     if (key === 'limit' || key === 'order') return true;
@@ -29,12 +30,16 @@ function fakeStore() {
         const fields = conflict.split(',');
         const old = tables[table].find((row) => fields.every((field) => row[field] === item[field]));
         if (old) Object.assign(old, structuredClone(item));
-        else tables[table].push({ id: `row-${next++}`, ...structuredClone(item) });
+        else tables[table].push({ id: `row-${next}`, created_at: new Date(1700000000000 + next++ * 1000).toISOString(), ...structuredClone(item) });
       }
       return values;
     },
     async update(table, filters, body) {
       for (const row of tables[table]) if (matching(row, filters)) Object.assign(row, structuredClone(body));
+      return [];
+    },
+    async remove(table, filters) {
+      tables[table] = tables[table].filter((row) => !matching(row, filters));
       return [];
     },
   };
@@ -160,23 +165,77 @@ test('context Supabase masuk ke conversation stateless dan PAL latency tidak diu
   assert.equal(bodies[0].face_id, FACE_ID);
 });
 
-test('Dr. Paws hanya mengarsip transkrip dan tidak membaca profil atau memori Naya', async () => {
+test('Dr. Paws menyimpan dan mengingat per subject, terpisah dari Naya, serta reset terarah', async () => {
   const store = fakeStore();
   store.tables.users.push({ id: PRIMARY_USER_ID });
   store.tables.user_profile.push({ user_id: PRIMARY_USER_ID, mode: 'naya', display_name: 'Nama rahasia Naya' });
   store.tables.memories.push({ user_id: PRIMARY_USER_ID, mode: 'naya', category: 'PREFERENCE',
     normalized_key: 'coffee', content: 'Kopi rahasia Naya', active: true });
+  const subjects = makeSubjectService({ store });
+  const a = await subjects.create({ displayName: 'Anak A', nickname: 'A' });
+  const b = await subjects.create({ displayName: 'Anak B' });
   const tavus = { getConversation: async () => ({ events: [{ event_type: 'application.transcription_ready',
     properties: { transcript: [{ role: 'user', content: 'Aku suka kucing.' }] } }] }) };
   const dr = makeMemoryService({ store, tavus, mode: 'dr_paws', palId: 'p-paws', faceId: 'r-paws',
-    extract: async () => { throw Error('Gemini should not profile a child'); } });
-  const context = await dr.prepareContext();
+    subjects, extract: async () => validateExtraction({ summary: 'A bercerita tentang kucing.', tone: 'senang', topics: ['kucing'], follow_ups: [],
+      memories: [{ category: 'PREFERENCE', content: 'A suka kucing', normalized_key: 'favorite:animal', importance: .7, confidence: .9 },
+        { category: 'PROFILE', content: 'A memiliki diagnosis ADHD', normalized_key: 'clinical:adhd', importance: .9, confidence: .9 }],
+      open_loops: [{ content: 'Tanyakan gambar kucing', normalized_key: 'drawing:cat' }], resolved_open_loop_keys: [], profile: {} }) });
+  const context = await dr.prepareContext({ subjectId: a.id });
   assert.doesNotMatch(context, /Nama rahasia Naya|Kopi rahasia Naya/);
-  await dr.recordStarted('c-paws');
+  await dr.recordStarted('c-paws', { subjectId: a.id });
   assert.equal((await dr.recordEnded('c-paws')).status, 'ready');
   assert.equal(store.tables.conversation_sessions.at(-1).mode, 'dr_paws');
+  assert.equal(store.tables.conversation_sessions.at(-1).subject_id, a.id);
   assert.equal(store.tables.conversation_messages.length, 1);
-  assert.equal(store.tables.memories.length, 1);
-  assert.equal(store.tables.session_summaries.length, 0);
+  assert.equal(store.tables.memories.length, 2);
+  assert.equal(store.tables.session_summaries.length, 1);
+  assert.equal(store.tables.session_summaries[0].subject_id, a.id);
   assert.equal(store.tables.user_profile.length, 1);
+  assert.match(await dr.prepareContext({ subjectId: a.id }), /A suka kucing|Tanyakan gambar kucing/);
+  assert.doesNotMatch(await dr.prepareContext({ subjectId: b.id }), /A suka kucing|Tanyakan gambar kucing|Kopi rahasia/);
+  const naya = makeMemoryService({ store, tavus });
+  assert.doesNotMatch(await naya.prepareContext(), /A suka kucing/);
+  await assert.rejects(dr.prepareContext(), (error) => error.code === 'SUBJECT_REQUIRED');
+  await assert.rejects(subjects.reset(a.id, false), (error) => error.code === 'CONFIRMATION_REQUIRED');
+  await subjects.reset(a.id, true);
+  assert.doesNotMatch(await dr.prepareContext({ subjectId: a.id }), /A suka kucing|Tanyakan gambar kucing/);
+  assert.equal(store.tables.memories.length, 1);
+  assert.equal(store.tables.memories[0].mode, 'naya');
+  assert.equal(store.tables.conversation_messages.length, 1);
+  assert.equal((await dr.status()).subjectsCount, 2);
+});
+
+test('dua anak dan perubahan preferensi tetap terisolasi; fakta terbaru menang', async () => {
+  const store = fakeStore();
+  const subjects = makeSubjectService({ store });
+  const a = await subjects.create({ displayName: 'A' });
+  const b = await subjects.create({ displayName: 'B' });
+  const transcript = new Map([
+    ['c-a1', 'Aku suka warna merah.'], ['c-b1', 'Aku suka warna hijau.'], ['c-a2', 'Sekarang warna favoritku biru.'],
+  ]);
+  const tavus = { getConversation: async (id) => ({ events: [{ event_type: 'application.transcription_ready',
+    properties: { transcript: [{ role: 'user', content: transcript.get(id) }] } }] }) };
+  const extract = async (messages) => {
+    const utterance = messages[0].content;
+    const color = utterance.includes('biru') ? 'biru' : utterance.includes('hijau') ? 'hijau' : 'merah';
+    return validateExtraction({ summary: `Bercerita tentang warna ${color}.`, tone: 'santai', topics: ['warna'], follow_ups: [],
+      memories: [{ category: 'PREFERENCE', content: `Warna favoritnya ${color}`, normalized_key: 'favorite:color', importance: .8, confidence: .9 }],
+      open_loops: [], resolved_open_loop_keys: [], profile: {} });
+  };
+  const dr = makeMemoryService({ store, tavus, mode: 'dr_paws', subjects, extract });
+  for (const [id, subjectId] of [['c-a1', a.id], ['c-b1', b.id], ['c-a2', a.id]]) {
+    await dr.recordStarted(id, { subjectId });
+    await dr.recordEnded(id);
+  }
+  const aContext = await dr.prepareContext({ subjectId: a.id });
+  const bContext = await dr.prepareContext({ subjectId: b.id });
+  assert.match(aContext, /favoritnya biru/);
+  assert.doesNotMatch(aContext, /favoritnya merah|favoritnya hijau/);
+  assert.match(bContext, /favoritnya hijau/);
+  assert.doesNotMatch(bContext, /favoritnya biru|favoritnya merah/);
+  assert.equal(store.tables.memories.filter((item) => item.subject_id === a.id).length, 1);
+  await subjects.reset(a.id, true);
+  assert.match(await dr.prepareContext({ subjectId: b.id }), /favoritnya hijau/);
+  assert.equal(store.tables.conversation_messages.length, 3);
 });

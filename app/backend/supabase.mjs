@@ -1,5 +1,5 @@
 export const PRIMARY_USER_ID = 'naya_primary_user';
-const TABLES = new Set(['users','conversation_sessions','conversation_messages','memories','user_profile','open_loops','session_summaries','app_settings']);
+const TABLES = new Set(['users','conversation_sessions','conversation_messages','memories','user_profile','open_loops','session_summaries','subjects','app_settings']);
 
 export class StorageError extends Error {
   constructor(code) { super(code); this.name = 'StorageError'; this.code = code; }
@@ -43,5 +43,6 @@ export function makeSupabaseStore({ url = process.env.SUPABASE_URL, key = proces
   const select = (table, filters = {}, columns = '*') => query(table, { filters, columns });
   const upsert = (table, body, conflict) => query(table, { method: 'POST', body, conflict });
   const update = (table, filters, body) => query(table, { method: 'PATCH', filters, body });
-  return { configured, select, upsert, update };
+  const remove = (table, filters) => query(table, { method: 'DELETE', filters });
+  return { configured, select, upsert, update, remove };
 }
