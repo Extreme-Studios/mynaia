@@ -8,13 +8,13 @@ Pengguna membuka aplikasi, melihat video Naya sebagai elemen utama, memberi izin
 
 ```text
 Browser (UI, izin mic, media, kontrol)
-  └─ Backend aplikasi (session broker, konfigurasi, pembatasan, nanti profil/memori)
-       └─ Tavus CVI (PAL + stock Face, STT, turn-taking, TTS, rendering)
-            ├─ Tavus-hosted LLM tavus-gemma-4
-            └─ Tavus Memories (PAL + participant tag stabil)
+  └─ Backend aplikasi di Vercel (session broker, retrieval, processing)
+       ├─ Supabase (user ID, transkrip teks, ringkasan, memori, profil, open loop)
+       ├─ Gemini (ekstraksi memori pasca-sesi)
+       └─ Tavus CVI (PAL + Face, STT, TTS, lip sync, video, LLM hosted)
 ```
 
-Backend menyimpan kunci Tavus dan Gemini di server, membuat sesi, mengembalikan URL sesi terbatas ke browser, dan mengakhiri sesi lewat API. Browser tidak menerima API key. PAL memuat persona Naya; Face menentukan tampilan avatar. LLM aktif adalah Tavus-hosted `tavus-gemma-4`; Gemini BYO tetap sebagai opsi rollback. Tavus mengelola audio/video realtime. Pada Milestone 4, backend menambahkan `participant_tags` tunggal dan `conversational_context` pendek pada setiap sesi. Tidak ada Gemini Live.
+Backend menyimpan kunci Tavus, Gemini, dan Supabase di server, membuat sesi, mengembalikan URL sesi terbatas ke browser, dan mengakhiri sesi lewat API. Browser tidak menerima API key. PAL memuat persona Naya; Face menentukan tampilan avatar. LLM percakapan aktif adalah Tavus-hosted `tavus-gemma-4`; Gemini BYO tetap opsi rollback, sedangkan Gemini `generateContent` dipakai terpisah setelah sesi untuk memproses memori. Backend memuat context ringkas dari Supabase sebelum membuat sesi Tavus. Ketika Supabase aktif, `participant_tags` Tavus tidak dikirim dan identitas Naya tidak bergantung pada PAL atau Tavus API key.
 
 ## Wireframe layar
 
@@ -41,13 +41,13 @@ Target jangka panjang: `idle → connecting → listening ↔ thinking ↔ speak
 
 ### Konteks sesi
 
-Percakapan sesi aktif untuk menjaga konteks giliran. TTL mengikuti sesi; tidak otomatis menjadi profil permanen. Transkrip mentah bukan sumber memori jangka panjang. Pada Milestone 1 belum ada penyimpanan/transkripsi.
+Tavus menangani konteks selama panggilan. Setelah selesai, backend mengambil `application.transcription_ready` lewat GET conversation verbose dan menyimpan transkrip teks per giliran di Supabase. Transkrip ini arsip historis; audio/video tidak disimpan.
 
 ### Persistent memory
 
-Tavus mengaitkan memory store ke pasangan PAL + `participant_tags` stabil. Backend mengambil tag dari `NAYA_MEMORY_STORE` atau default `naya-primary-user-v1`; identitas tidak berasal dari perangkat, browser, atau IP. Learned memory dikelola Tavus setelah sesi selesai. Aplikasi mengarahkan PAL untuk memakai fakta relevan secara natural, tetapi hasil dan penyimpanan sensitif harus diuji/audit; prompt bukan filter penyimpanan yang terjamin. Kategori konseptual dan batas privasi dijelaskan di `docs/milestone-4.md`.
+Supabase adalah sumber memori permanen. `users.id = naya_primary_user` untuk prototype single-user. Gemini membuat ringkasan, fakta terpilih, profil, dan open loop dari transkrip. Backend mengambil beberapa entri penting/terbaru dan menyusun `conversational_context` maksimum 5.000 karakter sebelum panggilan berikutnya. Identitas tidak berasal dari Tavus key, PAL, Face, IP, browser, atau perangkat. Kategori dan batas privasi ada di `docs/milestone-4.md`.
 
-Tidak ada database transkrip, audio, atau video. Untuk multi-user di masa depan, login harus memberi setiap user tag berbeda `naya_user_<stable_user_uuid>`. Supabase hanya opsi bila dibutuhkan untuk arsip verbatim/profile atau Tavus Memories terbukti tidak tersedia. Endpoint `/api/memory/status` mengungkap status konfigurasi saja.
+Skema ada di `supabase/migrations/001_naya_memory.sql`: tujuh tabel dengan RLS tanpa policy browser. Vercel tidak dipakai untuk file/state permanen. Untuk multi-user di masa depan, login harus memetakan tiap user ke ID berbeda. Endpoint `/api/memory/status` hanya mengungkap status/jumlah pending; `/api/memory/sync` tersedia untuk sinkronisasi tertunda dan dibatasi gerbang akses di Vercel. Bila Supabase belum dikonfigurasi, panggilan lama tetap berjalan dengan Tavus memory sementara dan endpoint status menunjukkan disabled.
 
 ## Privasi dan keamanan awal
 

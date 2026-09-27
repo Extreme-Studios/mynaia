@@ -1,45 +1,38 @@
-# Milestone 4 — Persistent Memory + Personalization
+# Milestone 4 — Supabase Persistent Memory + Personalization
 
-Status: implementasi siap; uji dua sesi oleh manusia belum dilakukan.
+Status: kode dan migrasi siap; koneksi Supabase dan uji dua sesi belum terverifikasi. **SOURCE OF TRUTH = SUPABASE** setelah konfigurasi dan migrasi aktif. Tavus tetap penyedia avatar/video, STT, TTS, dan lip sync. Gemini memproses transkrip setelah sesi. Vercel hanya backend aplikasi dan tidak menyimpan state permanen di filesystem.
 
-## Integrasi Tavus
+## Aktivasi
 
-Dokumentasi resmi Tavus terbaru memakai `participant_tags: ["naya-primary-user-v1"]` pada Create Conversation. `memory_stores` adalah field legacy yang deprecated; jangan kirim keduanya. Tag adalah identitas peserta stabil, bukan `memory_store_id` resource. Tavus membuat atau memakai kembali satu memory store untuk pasangan PAL + tag. PAL tetap `p54bfaf633c5`. Tidak ada PAL, Face, Sparrow-2, patience, interruptibility, LLM, atau key yang diubah pada milestone ini.
+1. Buat project Supabase milik Naya. Jalankan `supabase/migrations/001_naya_memory.sql` sekali melalui SQL Editor project tersebut.
+2. Isi `SUPABASE_URL` dan `SUPABASE_SERVICE_ROLE_KEY` di `.env` lokal dan environment server Vercel. Jangan taruh key di browser, source control, atau chat. Saat ini kedua nilai belum tersedia di project lokal, jadi koneksi nyata belum dapat dinyatakan berhasil.
+3. Pastikan `GEMINI_API_KEY` server-side tersedia untuk ekstraksi pasca-sesi. `GEMINI_MEMORY_MODEL` default `gemini-2.5-flash`, terpisah dari LLM percakapan Tavus-hosted.
+4. Cek `GET /api/memory/status`. `enabled: true` berarti konfigurasi server terisi dan tabel dapat dibaca. Angka pending menunjukkan sesi yang belum selesai diproses. Endpoint ini tidak mengirim isi transkrip, memori, user ID, atau key.
 
-Backend mengambil tag dari `NAYA_MEMORY_STORE`; jika kosong, default `naya-primary-user-v1`. Frontend, IP, fingerprint, browser, dan perangkat tidak menentukan tag. Desktop dan HP yang mengakses backend yang sama memakai store yang sama. Untuk prototype single-user, batasi akses situs agar percakapan orang lain tidak tercampur ke memori primary user.
+Selama Supabase belum dikonfigurasi, alur panggilan lama tetap bisa dipakai dan Tavus `participant_tags` lama tetap dikirim sebagai fallback sementara. Begitu Supabase dikonfigurasi, backend **tidak** mengirim `participant_tags`; kontinuitas hanya memakai `naya_primary_user` di database aplikasi. Tidak ada Tavus PAL, Face, Sparrow-2, patience, interruptibility, atau LLM yang diubah.
 
-Setiap create conversation mengirim `participant_tags` tunggal, `dynamic_greeting: true`, dan `conversational_context` ringkas tentang penggunaan memori yang relevan dan sapaan bervariasi. Context ini menambah runtime prompt tanpa memodifikasi PAL existing. Tavus menyatakan `dynamic_greeting: true` pada conversation mengalahkan greeting tertulis PAL; greeting dihasilkan dari PAL dan context. Apakah hasilnya benar memakai learned memory saat opening masih perlu uji manusia.
+## Alur data
 
-`GET /api/memory/status` hanya menampilkan `enabled`, `provider`, dan `storeConfigured`. Endpoint ini tidak membaca isi memori atau mengekspos tag. Nilai `enabled: true` berarti konfigurasi aplikasi aktif, bukan bukti learned memory sudah terbentuk.
+- Sebelum panggilan, backend membaca profil, maksimal 12 memori aktif, tiga ringkasan terbaru, dan tiga open loop dari Supabase. Context dibatasi 5.000 karakter, sekitar 500–1.500 token tergantung isinya, lalu disisipkan ke `conversational_context` Tavus. Sapaan dinamis tetap aktif; Naya memakai fakta relevan secara natural tanpa menyebut database.
+- Setelah Tavus mengakhiri sesi, backend memanggil `GET /v2/conversations/{conversation_id}?verbose=true` dan hanya mengambil `application.transcription_ready.properties.transcript`. Jika belum ada, sesi tetap pending. Browser mengirim satu sinkronisasi tambahan delapan detik setelah End; sebelum panggilan berikutnya backend juga mencoba menyelesaikan sesi pending. `POST /api/memory/sync` tersedia untuk sinkronisasi manual; pada Vercel dibatasi kode akses.
+- Transcript disimpan per giliran di `conversation_messages` dengan role, content, timestamp, seconds_from_start, duration, dan urutan. `(session_id, position)` unik, sehingga impor ulang tidak menggandakan baris. Audio dan video tidak disimpan.
+- Gemini membaca teks yang sudah disaring, menghasilkan JSON berisi ringkasan, tone, topik, follow-up, memori, open loop, dan pembaruan profil. Memori memakai `(user_id, category, normalized_key)` untuk deduplikasi; fakta bertentangan memperbarui key lama atau menonaktifkan key yang digantikan. Open loop dapat ditandai resolved. Seluruh transkrip tetap menjadi arsip historis, sedangkan memori adalah indeks/interpretasi.
 
-Pemeriksaan API read-only `GET /v2/memory-stores` untuk PAL existing mendapat HTTP 200 pada 27 September 2026. Ini menunjukkan endpoint daftar dapat diakses pada akun sekarang. Create/reuse store dan learned memory belum diverifikasi karena tidak ada conversation live otomatis. Bila create conversation nanti ditolak karena plan, hentikan pengujian; jangan upgrade atau membeli paket. Fallback yang didokumentasikan adalah Supabase untuk memory/profile + `conversational_context`, tetapi belum diimplementasikan.
+Identitas aplikasi `naya_primary_user` stabil dan tidak berasal dari Tavus key, PAL, Face, IP, browser, atau perangkat. Perubahan provider atau deployment tidak mengganti identitas. Untuk multi-user kelak, login harus memetakan akun ke user ID berbeda; login belum dibuat. Jangan membuka akses panggilan untuk banyak orang dengan satu akun prototype, karena semua sesi akan berbagi memori yang sama.
 
-## Kebijakan memori
+## Privasi dan batas
 
-| Kategori | Contoh |
-| --- | --- |
-| PROFILE | nama, panggilan, bahasa, preferensi gaya bicara |
-| PREFERENCES | makanan, musik, hobi, aktivitas favorit |
-| RELATIONSHIPS | keluarga/teman yang sering disebut dan hubungan relevan |
-| EPISODIC | kejadian, aktivitas penting, pengalaman yang dibagikan |
-| OPEN_LOOPS | rencana mendatang dan hal yang layak ditindaklanjuti |
-| INTERACTION_STYLE | panjang jawaban, humor, gaya tenang |
+Transkrip dimaksudkan sebagai arsip tekstual, tetapi pola yang tampak seperti API key, token, password, dan kartu pembayaran disamarkan sebelum disimpan. Karena rahasia yang diucapkan bisa berbentuk bebas, penyaringan ini tidak bisa menjamin menangkap semuanya; jangan menyebut rahasia saat panggilan. Prompt ekstraksi menolak filler dan diagnosis kesehatan/mental sebagai profil otomatis, lalu output Gemini divalidasi lagi. Tidak ada klaim bahwa model selalu tepat. Akses database memakai service role di server; tabel RLS aktif tanpa policy browser. Pengguna perlu kebijakan retensi dan kontrol hapus sebelum rilis luas.
 
-Utamakan informasi yang berguna untuk percakapan mendatang. Abaikan filler seperti “iya”, “hmm”, dan “oke”. Jangan jadikan diagnosis kesehatan/mental sebagai profil permanen otomatis. Jangan sengaja menyimpan API key, password, token, kartu pembayaran, atau credential. Instruksi prompt tidak menjamin Tavus tidak akan mempelajari informasi sensitif yang diucapkan; sebelum penggunaan lebih luas, audit kebijakan retensi Tavus serta kemampuan melihat dan menghapus learned memory. Jangan memasukkan rahasia ke percakapan.
+## Tes manusia dua sesi
 
-Tavus Memories memberi kontinuitas percakapan, bukan arsip verbatim. Milestone ini tidak menambah database transkrip, audio, atau video. Jika arsip persis dibutuhkan nanti, Supabase dapat menjadi backend opsional terpisah dengan persetujuan dan aturan retensi.
+Jangan buat conversation otomatis untuk pengujian. Setelah Supabase dan migrasi aktif:
 
-Untuk multi-user kelak, autentikasi harus memetakan setiap user ke tag `naya_user_<stable_user_uuid>` di backend. Tiap user memakai store berbeda; jangan pernah berbagi satu tag antar-user. Login belum dibuat.
+1. Sesi 1: katakan “Namaku Adi”, “Aku suka kopi susu”, “Aku lagi ngerjain Naya Virtual Girl”, dan “Besok aku ada meeting penting”. Akhiri normal.
+2. Tunggu sampai `/api/memory/status` menunjukkan tidak ada sesi pending. Periksa di Supabase bahwa session, pesan teks, ringkasan, memori, dan open loop tersimpan. Jangan buka transkrip lewat endpoint publik.
+3. Sesi 2 dari HP atau browser lain: jangan ulang fakta. Tanyakan secara natural ingin minum apa dan proyek apa yang sedang dikerjakan. Amati apakah Naya menindaklanjuti meeting bila relevan, tanpa memuntahkan seluruh memori.
+4. Ulangi pemeriksaan setelah mengganti PAL/key hanya bila memang diperlukan nantinya; desain identitas sudah independen, tetapi migrasi provider nyata belum diuji.
 
-## Uji manusia dua sesi
+Tes mock lokal tidak membuat Tavus conversation dan tidak memakai menit Tavus. Hasil live hanya boleh disebut PASSED setelah seluruh alur Supabase dan recall dua sesi diverifikasi.
 
-Jalankan hanya bila siap memakai Tavus minutes. Satu sesi A, akhiri, tunggu proses pembelajaran Tavus, lalu satu sesi B. Jangan menekan Start berulang kali.
-
-1. Sesi A: katakan “Hai Naya, namaku Adi.”, “Aku suka kopi susu.”, dan “Besok pagi aku ada meeting penting.” Akhiri conversation.
-2. Setelah memori selesai diproses, buka sesi B di browser atau perangkat lain dengan backend yang sama. Jangan ulang tiga fakta tadi.
-3. Periksa apakah Naya mengenali nama jika relevan, memakai preferensi kopi secara wajar, dapat menindaklanjuti meeting, dan tidak selalu menyapa seperti pertemuan pertama. Tidak perlu menyebut semua fakta sekaligus. Jika semua fakta dimuntahkan di pembuka, anggap tidak natural.
-4. Catat apakah greeting bervariasi, dan apakah tag/store benar-benar tersambung. Jika Tavus memberi error plan pada sesi pertama, hentikan dan laporkan `MILESTONE 4: TAVUS MEMORY PLAN BLOCKED`.
-
-Tes mock lokal tidak menciptakan Tavus conversation. Hasil 21/21 lulus; uji manusia masih diperlukan untuk klaim PASS.
-
-Referensi resmi: [Memories](https://docs.tavus.io/sections/conversational-video-interface/memories), [Create Conversation](https://docs.tavus.io/api-reference/conversations/create-conversation), [List Memory Stores](https://docs.tavus.io/api-reference/memory-stores/list-memory-stores).
+Referensi resmi: [Tavus Get Conversation](https://docs.tavus.io/api-reference/conversations/get-conversation), [Tavus Create Conversation](https://docs.tavus.io/api-reference/conversations/create-conversation), [Gemini structured output](https://ai.google.dev/gemini-api/docs/structured-output), [Supabase API keys](https://supabase.com/docs/guides/api/api-keys).

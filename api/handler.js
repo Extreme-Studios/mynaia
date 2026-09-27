@@ -1,7 +1,11 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { makeTavusClient, TavusError } from '../app/backend/tavus.mjs';
 import { geminiConfig } from '../app/backend/gemini.mjs';
-import { memoryStatus, memoryStoreTag } from '../app/backend/memory.mjs';
+import { memoryStoreTag } from '../app/backend/memory.mjs';
+import { makeSupabaseStore, StorageError } from '../app/backend/supabase.mjs';
+import { makeMemoryService } from '../app/backend/memory-service.mjs';
+
+export const config = { maxDuration: 60 };
 
 const SESSION_AGE_MS = 24 * 60 * 60 * 1000;
 
@@ -51,7 +55,7 @@ async function readJson(request) {
   catch { throw new TavusError('INVALID_REQUEST', 'JSON tidak valid.', 400); }
 }
 
-export function createVercelHandler({ env = process.env, client } = {}) {
+export function createVercelHandler({ env = process.env, client, memory } = {}) {
   const gemini = geminiConfig(env);
   const tavus = client || makeTavusClient({
     apiKey: env.TAVUS_API_KEY,
@@ -60,6 +64,10 @@ export function createVercelHandler({ env = process.env, client } = {}) {
     memoryStore: memoryStoreTag(env),
   });
   const accessCode = env.NAYA_ACCESS_CODE?.trim() || '';
+  const store = makeSupabaseStore({ url: env.SUPABASE_URL, key: env.SUPABASE_SERVICE_ROLE_KEY });
+  const memoryService = memory || makeMemoryService({ store, tavus, palId: env.TAVUS_PAL_ID, faceId: 'rc9cff32ceba',
+    extract: (messages) => import('../app/backend/memory-extract.mjs').then(({ extractWithGemini }) =>
+      extractWithGemini(messages, { apiKey: env.GEMINI_API_KEY, model: env.GEMINI_MEMORY_MODEL || 'gemini-2.5-flash' })) });
 
   return async function handler(request, response) {
     const url = new URL(request.url, 'https://mynaia.local');
@@ -70,7 +78,7 @@ export function createVercelHandler({ env = process.env, client } = {}) {
         return;
       }
       if (request.method === 'GET' && route === 'memory-status') {
-        json(response, 200, memoryStatus(env));
+        json(response, 200, await memoryService.status());
         return;
       }
       if (request.method === 'GET' && route === 'gemini-status') {
@@ -110,19 +118,35 @@ export function createVercelHandler({ env = process.env, client } = {}) {
           throw new TavusError('CONFIG_REQUIRED', 'Konfigurasi Naya di server belum lengkap.', 503);
         }
         if (route === 'conversations') {
-          const session = await tavus.createConversation();
+          const context = await memoryService.prepareContext();
+          const session = await tavus.createConversation({ conversationalContext: context, disableTavusMemory: store.configured });
+          try { await memoryService.recordStarted(session.conversationId); }
+          catch (error) {
+            try { await tavus.endConversation(session.conversationId); } catch { /* Avoid an orphaned paid session if storage fails. */ }
+            throw error;
+          }
           json(response, 201, session);
           return;
         }
         const id = url.searchParams.get('id');
         if (!id || !/^[A-Za-z0-9_-]{4,80}$/.test(id)) throw new TavusError('INVALID_ID', 'Conversation ID tidak valid.', 400);
         await tavus.endConversation(id);
+        try { await memoryService.recordEnded(id); }
+        catch (error) { console.error('Memory sync failed:', error?.code || error?.message?.split('_')[0] || 'ERROR'); }
         json(response, 200, { status: 'ended' });
+        return;
+      }
+      if (request.method === 'POST' && route === 'memory-sync') {
+        if (!authorized(request, accessCode) || !accessCode) {
+          json(response, 401, { error: 'Akses diperlukan.', code: 'ACCESS_REQUIRED' }); return;
+        }
+        json(response, 200, await memoryService.processPending());
         return;
       }
       json(response, 404, { error: 'Tidak ditemukan.' });
     } catch (error) {
       if (error instanceof TavusError) json(response, error.status, { error: error.message, code: error.code });
+      else if (error instanceof StorageError) json(response, 503, { error: 'Penyimpanan memori belum tersedia.', code: error.code });
       else {
         console.error('Vercel API error:', error?.name || 'UnknownError');
         json(response, 500, { error: 'Terjadi kesalahan pada server.' });

@@ -180,14 +180,14 @@ export function makeTavusClient({
     }
   }
 
-  async function createConversation() {
+  async function createConversation({ conversationalContext = '', disableTavusMemory = false } = {}) {
     const palId = await getOrCreateNayaPal();
     const data = await request('POST', '/v2/conversations', {
       pal_id: palId,
       face_id: FACE_ID,
       conversation_name: usingGemini ? 'Naya Gemini Test' : 'Naya MVP Test',
-      participant_tags: [memoryStore],
-      conversational_context: MEMORY_CONTEXT,
+      ...(disableTavusMemory ? {} : { participant_tags: [memoryStore] }),
+      conversational_context: conversationalContext ? `${MEMORY_CONTEXT}\n${conversationalContext}` : MEMORY_CONTEXT,
       dynamic_greeting: true,
       properties: {
         languages: ['id'],
@@ -219,6 +219,11 @@ export function makeTavusClient({
     console.log('Conversation ended');
   }
 
+  async function getConversation(conversationId) {
+    if (!/^[A-Za-z0-9_-]{4,80}$/.test(conversationId)) throw new TavusError('INVALID_ID', 'Conversation ID tidak valid.', 400);
+    return request('GET', `/v2/conversations/${encodeURIComponent(conversationId)}?verbose=true`);
+  }
+
   return {
     configured: Boolean(apiKey?.trim()),
     configuredPalId,
@@ -226,5 +231,6 @@ export function makeTavusClient({
     getOrCreateNayaPal,
     createConversation,
     endConversation,
+    getConversation,
   };
 }

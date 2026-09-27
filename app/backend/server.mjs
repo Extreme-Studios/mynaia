@@ -5,7 +5,8 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { makeTavusClient, MAX_CALL_SECONDS, TavusError } from './tavus.mjs';
 import { geminiConfig } from './gemini.mjs';
-import { memoryStatus } from './memory.mjs';
+import { makeSupabaseStore, StorageError } from './supabase.mjs';
+import { makeMemoryService } from './memory-service.mjs';
 
 const directory = dirname(fileURLToPath(import.meta.url));
 const root = resolve(directory, '..', '..');
@@ -26,7 +27,8 @@ function json(response, status, data) {
   response.end(JSON.stringify(data));
 }
 
-export function createNayaServer({ client = makeTavusClient(), gemini = geminiConfig() } = {}) {
+export function createNayaServer({ client = makeTavusClient(), gemini = geminiConfig(),
+  memory = makeMemoryService({ store: makeSupabaseStore(), tavus: client, palId: process.env.TAVUS_PAL_ID, faceId: 'rc9cff32ceba' }) } = {}) {
   let activeConversation;
   let creating = false;
   let endTimer;
@@ -38,6 +40,8 @@ export function createNayaServer({ client = makeTavusClient(), gemini = geminiCo
     await client.endConversation(id);
     activeConversation = undefined;
     clearTimeout(endTimer);
+    try { await memory.recordEnded(id); }
+    catch (error) { console.error('Memory sync failed:', error?.code || 'ERROR'); }
   }
 
   return createServer(async (request, response) => {
@@ -48,7 +52,12 @@ export function createNayaServer({ client = makeTavusClient(), gemini = geminiCo
         return;
       }
       if (request.method === 'GET' && path === '/api/memory/status') {
-        json(response, 200, memoryStatus());
+        json(response, 200, await memory.status());
+        return;
+      }
+
+      if (request.method === 'POST' && path === '/api/memory/sync') {
+        json(response, 200, await memory.processPending());
         return;
       }
 
@@ -73,7 +82,13 @@ export function createNayaServer({ client = makeTavusClient(), gemini = geminiCo
         }
         creating = true;
         try {
-          const session = await client.createConversation();
+          const context = await memory.prepareContext();
+          const session = await client.createConversation({ conversationalContext: context, disableTavusMemory: Boolean(memory.enabled) });
+          try { await memory.recordStarted(session.conversationId); }
+          catch (error) {
+            try { await client.endConversation(session.conversationId); } catch { /* Prevent an orphaned call. */ }
+            throw error;
+          }
           activeConversation = session;
           endTimer = setTimeout(async () => {
             try { await finishConversation(session.conversationId); }
@@ -109,6 +124,8 @@ export function createNayaServer({ client = makeTavusClient(), gemini = geminiCo
     } catch (error) {
       if (error instanceof TavusError) {
         json(response, error.status, { error: error.message, code: error.code });
+      } else if (error instanceof StorageError) {
+        json(response, 503, { error: 'Penyimpanan memori belum tersedia.', code: error.code });
       } else {
         console.error('Server error:', error?.name || 'UnknownError');
         json(response, 500, { error: 'Terjadi kesalahan pada server.' });

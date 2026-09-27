@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { memoryStoreTag, memoryStatus, MEMORY_CONTEXT } from '../app/backend/memory.mjs';
+import { memoryStoreTag, MEMORY_CONTEXT } from '../app/backend/memory.mjs';
 
 test('server memilih tag default atau override yang stabil', () => {
   assert.equal(memoryStoreTag({}), 'naya-primary-user-v1');
@@ -8,8 +8,8 @@ test('server memilih tag default atau override yang stabil', () => {
   assert.throws(() => memoryStoreTag({ NAYA_MEMORY_STORE: 'invalid tag' }));
 });
 
-test('status publik aman dan konteks melarang rahasia serta sapaan repetitif', () => {
-  assert.deepEqual(memoryStatus({ NAYA_MEMORY_STORE: 'private_id' }), { enabled: true, provider: 'tavus', storeConfigured: true });
+test('konteks tidak tergantung Tavus dan melarang rahasia serta sapaan repetitif', () => {
   assert.match(MEMORY_CONTEXT, /password/);
   assert.match(MEMORY_CONTEXT, /Jangan selalu/);
+  assert.doesNotMatch(MEMORY_CONTEXT, /memori Tavus/);
 });

@@ -34,7 +34,11 @@ async function apiRequest(path, options) {
 
 const api = {
   start: () => apiRequest('/api/conversations', { method: 'POST' }),
-  end: (id) => apiRequest(`/api/conversations/${encodeURIComponent(id)}/end`, { method: 'POST' }),
+  end: async (id) => {
+    const result = await apiRequest(`/api/conversations/${encodeURIComponent(id)}/end`, { method: 'POST' });
+    setTimeout(() => { apiRequest('/api/memory/sync', { method: 'POST' }).catch(() => {}); }, 8000);
+    return result;
+  },
 };
 
 function render(state) {

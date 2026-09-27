@@ -18,7 +18,7 @@ test('health, status aman, frontend dan missing key', async () => {
     const health = await (await fetch(`${base}/api/health`)).json();
     assert.deepEqual(health, { status: 'ok', milestone: 4 });
     const memory = await (await fetch(`${base}/api/memory/status`)).json();
-    assert.deepEqual(memory, { enabled: true, provider: 'tavus', storeConfigured: true });
+    assert.deepEqual(memory, { enabled: false, provider: 'supabase', storeConfigured: false, pendingSessions: 0 });
     assert.doesNotMatch(JSON.stringify(memory), /naya-primary-user-v1|api.?key|secret/i);
     const gemini = await (await fetch(`${base}/api/gemini/status`)).json();
     assert.deepEqual(gemini, { configured: true, model: 'gemini-3.8-flash' });
