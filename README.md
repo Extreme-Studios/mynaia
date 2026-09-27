@@ -41,4 +41,10 @@ Setelah konfigurasi, buka halaman lokal, cek detail status, lalu tekan **Mulai N
 
 ## Batas implementasi
 
-Frontend host mengetahui saat iframe termuat, tetapi belum memiliki event media Tavus/Daily untuk membuktikan status Listening/Thinking/Speaking. Status microphone dan percakapan harus diperiksa di dalam iframe. Kualitas avatar, lip-sync, suara, dan percakapan nyata tetap memerlukan uji manusia. Database, autentikasi, dan deployment belum dikerjakan.
+Frontend host mengetahui saat iframe termuat, tetapi belum memiliki event media Tavus/Daily untuk membuktikan status Listening/Thinking/Speaking. Status microphone dan percakapan harus diperiksa di dalam iframe. Kualitas avatar, lip-sync, suara, dan percakapan nyata tetap memerlukan uji manusia. Database dan akun pengguna belum dikerjakan.
+
+## Deployment Mynaia
+
+Repo GitHub private: `Extreme-Studios/mynaia`. Vercel project: `mynaia`; alias Vercel: `https://mynaia.vercel.app`. Domain khusus: `mynaia.extremestudiosai.com` melalui CNAME Domainesia. `npm run build` menyalin frontend ke `public/` saat build; API Vercel ada di `api/handler.js`. Environment production memerlukan `TAVUS_API_KEY`, `TAVUS_PAL_ID`, `GEMINI_API_KEY`, dan `GEMINI_MODEL`. `NAYA_ACCESS_CODE` opsional: bila diisi, pengunjung harus memasukkannya sebelum tombol panggilan bisa membuat sesi Tavus. Kode dan API key hanya tersimpan di environment Vercel; `.env`, state PAL lokal, dan `.vercel` tidak dikirim ke GitHub. Vercel tidak membuat PAL otomatis bila ID tidak dikonfigurasi.
+
+Fungsi Vercel tidak menyimpan state sesi di memori. Tavus membatasi conversation sampai 180 detik dan tombol **Akhiri** memanggil endpoint Tavus. Jangan mengandalkan frontend sebagai bukti status perangkat atau kualitas percakapan. Bila situs dibuka publik tanpa kode akses, setiap pengunjung dapat memakai menit Tavus.
