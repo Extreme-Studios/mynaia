@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Readable } from 'node:stream';
 import { createVercelHandler } from '../api/handler.js';
-import { adminAuthorized, createAdminCookie, sameOrigin, secretMatches } from '../app/backend/admin-auth.mjs';
+import { authorized, sameOrigin, sessionToken } from '../app/backend/access-auth.mjs';
 import { makeActiveProfileStore, modeProfileError, parseProfile, publicProfileStatus, resolveTavusProfile } from '../app/backend/tavus-profiles.mjs';
 import { inspectTavusProfile } from '../app/backend/tavus-profile-inspect.mjs';
 
@@ -55,18 +55,16 @@ test('nomor profil tersimpan di Supabase dan dibaca sama dari dua perangkat', as
   assert.equal(await makeActiveProfileStore({ store: { configured: true, select: async () => [] } }).getActive(), 1);
 });
 
-test('sesi admin singkat terpisah dari access code dan Origin silang ditolak', () => {
-  const secret = 'admin-secret-value';
-  assert.equal(secretMatches('wrong', secret), false);
-  const cookie = createAdminCookie(secret, { now: 1000000 });
-  assert.match(cookie, /HttpOnly; SameSite=Strict; Path=\/api\/admin; Max-Age=900; Secure/);
-  assert.equal(adminAuthorized({ headers: { cookie: cookie.split(';')[0] } }, secret, 1000001), true);
-  assert.equal(adminAuthorized({ headers: { cookie: cookie.split(';')[0] } }, secret, 1000000 + 901000), false);
+test('satu cookie akses melindungi dashboard dan API profil; Origin silang ditolak', () => {
+  const secret = 'access-code-value';
+  const cookie = `naya_access=${sessionToken(secret, 1000000)}`;
+  assert.equal(authorized({ headers: { cookie } }, secret, 1000001), true);
+  assert.equal(authorized({ headers: { cookie } }, secret, 1000000 + 86401000), false);
   assert.equal(sameOrigin({ headers: { origin: 'https://evil.example', host: 'mynaia.extremestudiosai.com' } }), false);
 });
 
 test('switch admin hanya mengubah sesi berikutnya; PAL, Face dan key tetap per profil', async () => {
-  const env = { MYNAIA_ADMIN_SECRET: 'admin-secret',
+  const env = { NAYA_ACCESS_CODE: 'access-code',
     TAVUS_PROFILE_1_API_KEY: 'key-one', TAVUS_PROFILE_1_NAYA_PAL_ID: 'p-naya-one',
     TAVUS_PROFILE_1_NAYA_FACE_ID: 'r-naya-one', TAVUS_PROFILE_1_DR_PAWS_PAL_ID: 'p-paws-one',
     TAVUS_PROFILE_1_DR_PAWS_FACE_ID: 'r-paws-one',
@@ -103,12 +101,15 @@ test('switch admin hanya mengubah sesi berikutnya; PAL, Face dan key tetap per p
   const handler = createVercelHandler({ env, store, memory, clientFactory });
   const denied = await invoke(handler, 'GET', 'admin-profiles');
   assert.equal(denied.status, 401);
-  const login = await invoke(handler, 'POST', 'admin-login', { body: { secret: 'admin-secret' } });
+  const deniedSwitch = await invoke(handler, 'POST', 'admin-profile', { body: { profile: 2 } });
+  assert.equal(deniedSwitch.status, 401);
+  assert.equal(active, '1');
+  const login = await invoke(handler, 'POST', 'access-login', { body: { code: 'access-code' } });
   const cookie = login.headers['set-cookie'].split(';')[0];
   const profiles = await invoke(handler, 'GET', 'admin-profiles', { cookie });
   assert.equal(profiles.body.profiles.length, 8);
-  assert.doesNotMatch(JSON.stringify(profiles.body), /key-one|key-two|admin-secret/);
-  const first = await invoke(handler, 'POST', 'conversations', { body: { mode: 'naya' } });
+  assert.doesNotMatch(JSON.stringify(profiles.body), /key-one|key-two|access-code/);
+  const first = await invoke(handler, 'POST', 'conversations', { cookie, body: { mode: 'naya' } });
   assert.equal(first.status, 201);
   assert.deepEqual(calls[0], { type: 'create', key: 'key-one', pal: 'p-naya-one', face: 'r-naya-one',
     mode: 'naya', context: 'same Supabase memory' });
@@ -118,20 +119,20 @@ test('switch admin hanya mengubah sesi berikutnya; PAL, Face dan key tetap per p
   assert.equal(missing.status, 409);
   const switched = await invoke(handler, 'POST', 'admin-profile', { cookie, body: { profile: 2 } });
   assert.deepEqual(switched.body, { active: 2 });
-  const status = await invoke(handler, 'GET', 'conversation-status&id=c00001');
+  const status = await invoke(handler, 'GET', 'conversation-status&id=c00001', { cookie });
   assert.deepEqual(status.body, { status: 'ended' });
   assert.deepEqual(calls[1], { type: 'status', key: 'key-one', id: 'c00001' });
-  await invoke(handler, 'POST', 'end&id=c00001');
+  await invoke(handler, 'POST', 'end&id=c00001', { cookie });
   assert.deepEqual(calls[2], { type: 'end', key: 'key-one', id: 'c00001' });
-  const second = await invoke(handler, 'POST', 'conversations', { body: { mode: 'naya' } });
+  const second = await invoke(handler, 'POST', 'conversations', { cookie, body: { mode: 'naya' } });
   assert.equal(second.status, 201);
   assert.deepEqual(calls[3], { type: 'create', key: 'key-two', pal: 'p-naya-two', face: 'r-naya-two',
     mode: 'naya', context: 'same Supabase memory' });
-  const paws = await invoke(handler, 'POST', 'conversations', { body: { mode: 'dr_paws' } });
+  const paws = await invoke(handler, 'POST', 'conversations', { cookie, body: { mode: 'dr_paws' } });
   assert.equal(paws.status, 201);
   assert.equal(calls[4].pal, 'p-paws-two');
   assert.equal(calls[4].face, 'r-paws-two');
-  assert.doesNotMatch(JSON.stringify(first.body), /key-one|key-two|admin-secret/);
+  assert.doesNotMatch(JSON.stringify(first.body), /key-one|key-two|access-code/);
 });
 
 test('inspeksi profil hanya membaca Tavus dan respons tidak membawa key', async () => {

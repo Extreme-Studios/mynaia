@@ -5,7 +5,7 @@ const mode = location.pathname === '/dr-paws' ? 'dr_paws' : 'naya';
 const isHome = !['/naya', '/dr-paws'].includes(location.pathname);
 const modeName = mode === 'naya' ? 'Naya' : 'Dr. Paws';
 const modeReady = { naya: true, dr_paws: false };
-let accessGranted = true;
+let accessGranted = false;
 let mountedUrl = '';
 let activeId = '';
 let durationTimer;
@@ -39,13 +39,21 @@ async function apiRequest(path, options = {}) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     if (response.status === 401 && data.code === 'ACCESS_REQUIRED') {
-      accessGranted = false;
-      $('#access-form').hidden = false;
+      setAccess(false);
       render(controller.snapshot());
     }
     throw new Error(data.error || `Server merespons HTTP ${response.status}.`);
   }
   return data;
+}
+
+function setAccess(granted) {
+  accessGranted = granted;
+  $('#app').hidden = !granted;
+  $('#access-gate').hidden = granted;
+  $('#access-form').hidden = granted;
+  $('#access-loading').hidden = true;
+  if (!granted) setSettings(false);
 }
 
 const api = {
@@ -201,8 +209,8 @@ $('#access-form').addEventListener('submit', async (event) => {
     await apiRequest('/api/access/login', { method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ code: $('#access-code').value }) });
     $('#access-code').value = '';
-    accessGranted = true;
-    $('#access-form').hidden = true;
+    setAccess(true);
+    if (!isHome) await refreshModeStatus();
     render(controller.snapshot());
   } catch (error) { $('#access-message').textContent = error.message; }
 });
@@ -229,7 +237,6 @@ async function refreshModeStatus() {
 
 async function refreshAdminProfiles() {
   const data = await apiRequest('/api/admin/tavus-profiles');
-  $('#admin-login').hidden = true;
   $('#admin-controls').hidden = false;
   const select = $('#admin-profile');
   select.replaceChildren();
@@ -247,33 +254,14 @@ async function refreshAdminProfiles() {
 
 async function refreshAdmin() {
   try {
-    const status = await apiRequest('/api/admin/status');
-    if (!status.enabled) {
-      $('#admin-login').hidden = true;
-      $('#admin-controls').hidden = true;
-      $('#admin-message').textContent = 'Admin Settings belum dikonfigurasi.';
-    } else if (status.authenticated) await refreshAdminProfiles();
-    else {
-      $('#admin-login').hidden = false;
-      $('#admin-controls').hidden = true;
-      $('#admin-message').textContent = 'Masukkan admin secret untuk memilih Tavus Engine.';
-    }
+    await refreshAdminProfiles();
   } catch {
-    $('#admin-message').textContent = 'Admin Settings tidak tersedia.';
+    $('#admin-controls').hidden = true;
+    $('#admin-message').textContent = 'Pengaturan Tavus tidak tersedia.';
   }
 }
 
 $('#admin-settings').addEventListener('toggle', () => { if ($('#admin-settings').open) refreshAdmin(); });
-$('#admin-login').addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const secret = $('#admin-secret').value;
-  $('#admin-secret').value = '';
-  try {
-    await apiRequest('/api/admin/login', { method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ secret }) });
-    await refreshAdminProfiles();
-  } catch (error) { $('#admin-message').textContent = error.message; }
-});
 $('#admin-apply').addEventListener('click', async () => {
   $('#admin-apply').disabled = true;
   try {
@@ -296,8 +284,10 @@ $('#admin-inspect').addEventListener('click', async () => {
 });
 
 updateOffline();
-if (!isHome) {
-  apiRequest('/api/modes/status').then((data) => {
+apiRequest('/api/access/status').then((data) => {
+  setAccess(!data.required || data.authorized);
+  if (!accessGranted) return;
+  if (!isHome) apiRequest('/api/modes/status').then((data) => {
     modeReady.naya = Boolean(data.naya);
     modeReady.dr_paws = Boolean(data.drPaws);
     $('#debug-text').textContent = `Mode ${modeName}: ${modeReady[mode] ? 'siap' : 'belum dikonfigurasi'}.`;
@@ -307,10 +297,9 @@ if (!isHome) {
     }
     render(controller.snapshot());
   }).catch(() => { $('#debug-text').textContent = 'Status backend tidak tersedia.'; });
-  apiRequest('/api/access/status').then((data) => {
-    accessGranted = !data.required || data.authorized;
-    $('#access-form').hidden = accessGranted;
-    render(controller.snapshot());
-  }).catch(() => { /* Local server can omit the access gate. */ });
-}
+  render(controller.snapshot());
+}).catch(() => {
+  setAccess(false);
+  $('#access-message').textContent = 'Status akses tidak tersedia. Coba muat ulang.';
+});
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});

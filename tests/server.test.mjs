@@ -66,3 +66,28 @@ test('response mapping, double start guard, end dan no secret leakage', async ()
     assert.equal(ended.status, 200);
   }, { prepareContext: async () => 'Konteks Supabase', recordStarted: async () => {}, recordEnded: async () => {} });
 });
+
+test('password awal membuka dashboard dan API profil lokal tanpa login kedua', async () => {
+  const server = createNayaServer({ env: { NAYA_ACCESS_CODE: 'test-access' },
+    store: { configured: true }, activeProfileStore: { getActive: async () => 1 } });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const page = await (await fetch(base)).text();
+    assert.match(page, /id="app" class="app-shell" hidden/);
+    assert.match(page, /id="access-gate"/);
+    assert.doesNotMatch(page, /id="admin-login"|id="admin-secret"/);
+    assert.equal((await fetch(`${base}/api/admin/tavus-profiles`)).status, 401);
+    assert.equal((await fetch(`${base}/api/admin/tavus-profile`, { method: 'POST' })).status, 401);
+    const login = await fetch(`${base}/api/access/login`, { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ code: 'test-access' }) });
+    assert.equal(login.status, 200);
+    const cookie = login.headers.get('set-cookie').split(';')[0];
+    const profiles = await fetch(`${base}/api/admin/tavus-profiles`, { headers: { cookie } });
+    assert.equal(profiles.status, 200);
+    assert.equal((await profiles.json()).profiles.length, 8);
+  } finally {
+    server.closeAllConnections(); server.close(); await once(server, 'close');
+  }
+});

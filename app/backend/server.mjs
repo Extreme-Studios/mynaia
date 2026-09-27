@@ -9,7 +9,7 @@ import { makeSupabaseStore, StorageError } from './supabase.mjs';
 import { makeMemoryService } from './memory-service.mjs';
 import { parseMode, parseDuration } from './modes.mjs';
 import { PROFILE_COUNT, makeActiveProfileStore, modeProfileError, parseProfile, publicProfileStatus, resolveTavusProfile } from './tavus-profiles.mjs';
-import { adminAuthorized, createAdminCookie, sameOrigin, secretMatches } from './admin-auth.mjs';
+import { authorized, equalSecret, sameOrigin, sessionToken } from './access-auth.mjs';
 import { inspectTavusProfile } from './tavus-profile-inspect.mjs';
 
 const directory = dirname(fileURLToPath(import.meta.url));
@@ -62,7 +62,7 @@ export function createNayaServer({ client: injectedClient, gemini = geminiConfig
       faceId: mode === 'naya' ? config.nayaFaceId : config.drPawsFaceId, mode });
   };
   const profiles = activeProfileStore || makeActiveProfileStore({ store });
-  const adminSecret = env.MYNAIA_ADMIN_SECRET?.trim() || '';
+  const accessCode = env.NAYA_ACCESS_CODE?.trim() || '';
   const memory = injectedMemory || makeMemoryService({ store, tavus: client, palId: first.nayaPalId,
     faceId: first.nayaFaceId, tavusForProfile: (profile) => clientForProfile(profile, 'naya') });
   const drMemory = injectedDrMemory || makeMemoryService({ store, tavus: drClient, mode: 'dr_paws',
@@ -92,25 +92,28 @@ export function createNayaServer({ client: injectedClient, gemini = geminiConfig
         json(response, 200, { status: 'ok', milestone: 5 });
         return;
       }
+      if (request.method === 'GET' && path === '/api/access/status') {
+        json(response, 200, { required: Boolean(accessCode), authorized: authorized(request, accessCode) });
+        return;
+      }
+      if (request.method === 'POST' && path === '/api/access/login') {
+        if (!accessCode) { json(response, 404, { error: 'Kode akses tidak diperlukan.' }); return; }
+        if (!sameOrigin(request)) throw new TavusError('INVALID_ORIGIN', 'Asal permintaan tidak valid.', 403);
+        const body = await readJson(request);
+        if (!equalSecret(body.code, accessCode)) throw new TavusError('INVALID_ACCESS_CODE', 'Kode akses salah.', 401);
+        const cookie = `naya_access=${sessionToken(accessCode)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=86400`;
+        json(response, 200, { authorized: true }, { 'set-cookie': cookie });
+        return;
+      }
+      if (path.startsWith('/api/') && !authorized(request, accessCode)) {
+        throw new TavusError('ACCESS_REQUIRED', 'Masukkan kode akses dulu.', 401);
+      }
       if (request.method === 'GET' && path === '/api/memory/status') {
         json(response, 200, await memory.status());
         return;
       }
-      if (request.method === 'GET' && path === '/api/admin/status') {
-        json(response, 200, { enabled: Boolean(adminSecret), authenticated: adminAuthorized(request, adminSecret) });
-        return;
-      }
-      if (request.method === 'POST' && path === '/api/admin/login') {
-        if (!adminSecret) throw new TavusError('ADMIN_NOT_CONFIGURED', 'Admin Settings belum dikonfigurasi.', 503);
-        if (!sameOrigin(request)) throw new TavusError('INVALID_ORIGIN', 'Asal permintaan tidak valid.', 403);
-        const body = await readJson(request);
-        if (!secretMatches(body.secret, adminSecret)) throw new TavusError('ADMIN_UNAUTHORIZED', 'Admin secret salah.', 401);
-        json(response, 200, { authenticated: true }, { 'set-cookie': createAdminCookie(adminSecret, { secure: false }) });
-        return;
-      }
       if ((request.method === 'GET' && path === '/api/admin/tavus-profiles') ||
           (request.method === 'POST' && (path === '/api/admin/tavus-profile' || path === '/api/admin/tavus-profile/inspect'))) {
-        if (!adminAuthorized(request, adminSecret)) throw new TavusError('ADMIN_UNAUTHORIZED', 'Login admin diperlukan.', 401);
         if (request.method === 'POST' && !sameOrigin(request)) throw new TavusError('INVALID_ORIGIN', 'Asal permintaan tidak valid.', 403);
         if (request.method === 'GET') {
           const active = await profiles.getActive();

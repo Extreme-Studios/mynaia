@@ -1,41 +1,13 @@
-import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { makeTavusClient, TavusError } from '../app/backend/tavus.mjs';
 import { geminiConfig } from '../app/backend/gemini.mjs';
 import { makeSupabaseStore, StorageError } from '../app/backend/supabase.mjs';
 import { makeMemoryService } from '../app/backend/memory-service.mjs';
 import { parseMode, parseDuration } from '../app/backend/modes.mjs';
 import { PROFILE_COUNT, makeActiveProfileStore, modeProfileError, parseProfile, publicProfileStatus, resolveTavusProfile } from '../app/backend/tavus-profiles.mjs';
-import { adminAuthorized, createAdminCookie, sameOrigin, secretMatches } from '../app/backend/admin-auth.mjs';
+import { authorized, equalSecret, sameOrigin, sessionToken } from '../app/backend/access-auth.mjs';
 import { inspectTavusProfile } from '../app/backend/tavus-profile-inspect.mjs';
 
 export const config = { maxDuration: 60 };
-
-const SESSION_AGE_MS = 24 * 60 * 60 * 1000;
-
-function equalSecret(left, right) {
-  const a = createHash('sha256').update(String(left || '')).digest();
-  const b = createHash('sha256').update(String(right || '')).digest();
-  return timingSafeEqual(a, b);
-}
-
-function sessionToken(secret, now = Date.now()) {
-  const payload = `${now.toString(36)}.${randomBytes(16).toString('hex')}`;
-  const signature = createHmac('sha256', secret).update(payload).digest('hex');
-  return `${payload}.${signature}`;
-}
-
-function authorized(request, accessCode, now = Date.now()) {
-  if (!accessCode) return true;
-  const cookie = String(request.headers.cookie || '').split(';').map((item) => item.trim())
-    .find((item) => item.startsWith('naya_access='));
-  const token = cookie?.slice('naya_access='.length);
-  const match = token?.match(/^([0-9a-z]+)\.([0-9a-f]{32})\.([0-9a-f]{64})$/);
-  if (!match) return false;
-  const created = parseInt(match[1], 36);
-  if (!Number.isSafeInteger(created) || created > now || now - created > SESSION_AGE_MS) return false;
-  const expected = createHmac('sha256', accessCode).update(`${match[1]}.${match[2]}`).digest('hex');
-  return equalSecret(match[3], expected);
-}
 
 function json(response, status, body, headers = {}) {
   response.writeHead(status, {
@@ -77,7 +49,6 @@ export function createVercelHandler({ env = process.env, client, memory, store: 
       faceId: mode === 'naya' ? config.nayaFaceId : config.drPawsFaceId, mode });
   };
   const accessCode = env.NAYA_ACCESS_CODE?.trim() || '';
-  const adminSecret = env.MYNAIA_ADMIN_SECRET?.trim() || '';
   const store = injectedStore || makeSupabaseStore({ url: env.SUPABASE_URL, key: env.SUPABASE_SERVICE_ROLE_KEY });
   const profiles = activeProfileStore || makeActiveProfileStore({ store });
   const memoryService = memory || makeMemoryService({ store, tavus, palId: firstProfile.nayaPalId, faceId: firstProfile.nayaFaceId,
@@ -96,26 +67,16 @@ export function createVercelHandler({ env = process.env, client, memory, store: 
         json(response, 200, { status: 'ok', milestone: 5 });
         return;
       }
+      if (!['access-status', 'access-login'].includes(route) && !authorized(request, accessCode)) {
+        throw new TavusError('ACCESS_REQUIRED', 'Masukkan kode akses dulu.', 401);
+      }
       if (request.method === 'GET' && route === 'memory-status') {
         json(response, 200, await memoryService.status());
         return;
       }
-      if (request.method === 'GET' && route === 'admin-status') {
-        json(response, 200, { enabled: Boolean(adminSecret), authenticated: adminAuthorized(request, adminSecret) });
-        return;
-      }
-      if (request.method === 'POST' && route === 'admin-login') {
-        if (!adminSecret) throw new TavusError('ADMIN_NOT_CONFIGURED', 'Admin Settings belum dikonfigurasi.', 503);
-        if (!sameOrigin(request)) throw new TavusError('INVALID_ORIGIN', 'Asal permintaan tidak valid.', 403);
-        const body = await readJson(request);
-        if (!secretMatches(body.secret, adminSecret)) throw new TavusError('ADMIN_UNAUTHORIZED', 'Admin secret salah.', 401);
-        const secure = Boolean(env.VERCEL_ENV || String(request.headers['x-forwarded-proto'] || '').includes('https'));
-        json(response, 200, { authenticated: true }, { 'set-cookie': createAdminCookie(adminSecret, { secure }) });
-        return;
-      }
       if ((request.method === 'GET' && route === 'admin-profiles') ||
           (request.method === 'POST' && (route === 'admin-profile' || route === 'admin-profile-inspect'))) {
-        if (!adminAuthorized(request, adminSecret)) throw new TavusError('ADMIN_UNAUTHORIZED', 'Login admin diperlukan.', 401);
+        if (!authorized(request, accessCode)) throw new TavusError('ACCESS_REQUIRED', 'Masukkan kode akses dulu.', 401);
         if (request.method === 'POST' && !sameOrigin(request)) throw new TavusError('INVALID_ORIGIN', 'Asal permintaan tidak valid.', 403);
         if (route === 'admin-profiles') {
           const active = await profiles.getActive();
@@ -161,6 +122,7 @@ export function createVercelHandler({ env = process.env, client, memory, store: 
       }
       if (request.method === 'POST' && route === 'access-login') {
         if (!accessCode) { json(response, 404, { error: 'Kode akses tidak diperlukan.' }); return; }
+        if (!sameOrigin(request)) throw new TavusError('INVALID_ORIGIN', 'Asal permintaan tidak valid.', 403);
         const body = await readJson(request);
         if (!equalSecret(body.code, accessCode)) {
           json(response, 401, { error: 'Kode akses salah.', code: 'INVALID_ACCESS_CODE' });

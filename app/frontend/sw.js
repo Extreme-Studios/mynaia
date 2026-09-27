@@ -1,4 +1,4 @@
-const CACHE = 'mynaia-static-v6';
+const CACHE = 'mynaia-static-v7';
 const STATIC = new Set(['/', '/index.html', '/naya', '/dr-paws', '/styles.css', '/app.js', '/controller.mjs',
   '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png']);
 self.addEventListener('install', (event) => {

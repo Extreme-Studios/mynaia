@@ -8,8 +8,6 @@
     { "source": "/api/tavus/status", "destination": "/api/handler?route=tavus-status" },
     { "source": "/api/memory/status", "destination": "/api/handler?route=memory-status" },
     { "source": "/api/modes/status", "destination": "/api/handler?route=mode-status" },
-    { "source": "/api/admin/status", "destination": "/api/handler?route=admin-status" },
-    { "source": "/api/admin/login", "destination": "/api/handler?route=admin-login" },
     { "source": "/api/admin/tavus-profiles", "destination": "/api/handler?route=admin-profiles" },
     { "source": "/api/admin/tavus-profile", "destination": "/api/handler?route=admin-profile" },
     { "source": "/api/admin/tavus-profile/inspect", "destination": "/api/handler?route=admin-profile-inspect" },
