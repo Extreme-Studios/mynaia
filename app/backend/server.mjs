@@ -5,6 +5,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { makeTavusClient, MAX_CALL_SECONDS, TavusError } from './tavus.mjs';
 import { geminiConfig } from './gemini.mjs';
+import { memoryStatus } from './memory.mjs';
 
 const directory = dirname(fileURLToPath(import.meta.url));
 const root = resolve(directory, '..', '..');
@@ -43,7 +44,11 @@ export function createNayaServer({ client = makeTavusClient(), gemini = geminiCo
     const path = new URL(request.url, 'http://localhost').pathname;
     try {
       if (request.method === 'GET' && path === '/api/health') {
-        json(response, 200, { status: 'ok', milestone: 3 });
+        json(response, 200, { status: 'ok', milestone: 4 });
+        return;
+      }
+      if (request.method === 'GET' && path === '/api/memory/status') {
+        json(response, 200, memoryStatus());
         return;
       }
 
@@ -120,6 +125,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   createNayaServer({ client: makeTavusClient({
     gemini: { apiKey: process.env.GEMINI_API_KEY, model: gemini.model },
   }), gemini }).listen(port, '127.0.0.1', () => {
-    console.log(`Naya Milestone 3: http://127.0.0.1:${port}`);
+    console.log(`Naya Milestone 4: http://127.0.0.1:${port}`);
   });
 }

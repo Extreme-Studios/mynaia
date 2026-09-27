@@ -1,12 +1,14 @@
 # Naya Virtual Girl
 
-**Current Milestone: 3 – Gemini Brain + Persona Integration**
+**Current Milestone: 4 – Persistent Memory + Personalization**
 
 Naya adalah prototype AI companion berbentuk percakapan video. PAL Tavus memakai persona Naya dari `character/system-prompt.md`; wajah sementara adalah stock Face Anna (`rc9cff32ceba`). Naya adalah AI, bukan manusia, terapis, dokter, atau pengganti hubungan manusia.
 
 ## Status
 
 Milestone 1 lulus. Milestone 2 lulus secara fungsional menurut human test pengguna. Pada awal Milestone 3, Gemini dipakai sebagai BYO LLM. PAL existing sekarang memakai Tavus-hosted `tavus-gemma-4` untuk respons percakapan; Tavus tetap menyediakan sesi realtime, STT, turn-taking, TTS, dan rendering stock Face Anna. Hasil integrasi, backup rollback Gemini, dan batas validasi ada di `docs/milestone-3.md`.
+
+Milestone 4 menambahkan Tavus Memories melalui satu `participant_tags` stabil dari backend. `NAYA_MEMORY_STORE` opsional di `.env` atau environment Vercel; default `naya-primary-user-v1`. Semua sesi prototype single-user memakai tag yang sama, termasuk desktop dan HP. `GET /api/memory/status` hanya memberi status konfigurasi tanpa isi/tag memori. Lihat `docs/milestone-4.md` untuk privasi dan uji dua sesi. Hasil recall belum diklaim sebelum human test.
 
 ## Menjalankan lokal
 
@@ -41,7 +43,7 @@ Setelah konfigurasi, buka halaman lokal, cek detail status, lalu tekan **Mulai N
 
 ## Batas implementasi
 
-Frontend host mengetahui saat iframe termuat, tetapi belum memiliki event media Tavus/Daily untuk membuktikan status Listening/Thinking/Speaking. Status microphone dan percakapan harus diperiksa di dalam iframe. Kualitas avatar, lip-sync, suara, dan percakapan nyata tetap memerlukan uji manusia. Database dan akun pengguna belum dikerjakan.
+Frontend host mengetahui saat iframe termuat, tetapi belum memiliki event media Tavus/Daily untuk membuktikan status Listening/Thinking/Speaking. Status microphone dan percakapan harus diperiksa di dalam iframe. Kualitas avatar, lip-sync, suara, dan percakapan nyata tetap memerlukan uji manusia. Database dan akun pengguna belum dikerjakan. Batasi akses prototype single-user karena semua pengunjung yang dapat membuat conversation akan berbagi satu memori Tavus.
 
 ## Deployment Mynaia
 

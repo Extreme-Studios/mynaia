@@ -72,3 +72,11 @@ test('Vercel hosted LLM tidak membutuhkan Gemini key untuk conversation mock', a
   assert.equal(response.status, 201);
   assert.equal(creates, 1);
 });
+
+test('Vercel memory status tidak mengekspos tag atau credential', async () => {
+  const handler = createVercelHandler({ env: { NAYA_MEMORY_STORE: 'naya_user_private', TAVUS_API_KEY: 'secret', TAVUS_PAL_ID: 'p-existing' },
+    client: { configured: true } });
+  const response = await invoke(handler, 'GET', '/api/handler?route=memory-status');
+  assert.deepEqual(response.body, { enabled: true, provider: 'tavus', storeConfigured: true });
+  assert.doesNotMatch(JSON.stringify(response.body), /private|secret|naya_user/);
+});

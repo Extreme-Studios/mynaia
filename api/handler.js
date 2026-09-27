@@ -1,6 +1,7 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { makeTavusClient, TavusError } from '../app/backend/tavus.mjs';
 import { geminiConfig } from '../app/backend/gemini.mjs';
+import { memoryStatus, memoryStoreTag } from '../app/backend/memory.mjs';
 
 const SESSION_AGE_MS = 24 * 60 * 60 * 1000;
 
@@ -56,6 +57,7 @@ export function createVercelHandler({ env = process.env, client } = {}) {
     apiKey: env.TAVUS_API_KEY,
     envPalId: env.TAVUS_PAL_ID,
     gemini: { apiKey: env.GEMINI_API_KEY, model: gemini.model },
+    memoryStore: memoryStoreTag(env),
   });
   const accessCode = env.NAYA_ACCESS_CODE?.trim() || '';
 
@@ -64,7 +66,11 @@ export function createVercelHandler({ env = process.env, client } = {}) {
     const route = url.searchParams.get('route');
     try {
       if (request.method === 'GET' && route === 'health') {
-        json(response, 200, { status: 'ok', milestone: 3 });
+        json(response, 200, { status: 'ok', milestone: 4 });
+        return;
+      }
+      if (request.method === 'GET' && route === 'memory-status') {
+        json(response, 200, memoryStatus(env));
         return;
       }
       if (request.method === 'GET' && route === 'gemini-status') {

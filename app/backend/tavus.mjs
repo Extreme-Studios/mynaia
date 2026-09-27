@@ -3,6 +3,7 @@ import { readFile, writeFile, rename } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GEMINI_BASE_URL, DEFAULT_GEMINI_MODEL } from './gemini.mjs';
+import { memoryStoreTag, MEMORY_CONTEXT } from './memory.mjs';
 
 export const FACE_ID = 'rc9cff32ceba';
 export const MAX_CALL_SECONDS = 180;
@@ -44,6 +45,7 @@ export function makeTavusClient({
   fetchImpl = fetch,
   baseUrl = 'https://tavusapi.com',
   gemini = null,
+  memoryStore = memoryStoreTag(),
 } = {}) {
   const usingGemini = Boolean(gemini);
   const effectiveStateFile = usingGemini ? geminiPalStateFile : stateFile;
@@ -184,6 +186,9 @@ export function makeTavusClient({
       pal_id: palId,
       face_id: FACE_ID,
       conversation_name: usingGemini ? 'Naya Gemini Test' : 'Naya MVP Test',
+      participant_tags: [memoryStore],
+      conversational_context: MEMORY_CONTEXT,
+      dynamic_greeting: true,
       properties: {
         languages: ['id'],
         max_call_duration: MAX_CALL_SECONDS,

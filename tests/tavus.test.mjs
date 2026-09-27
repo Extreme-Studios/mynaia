@@ -41,10 +41,37 @@ test('PAL dibuat sekali, disimpan, lalu dipakai ulang untuk conversation', async
     const conversationPayload = JSON.parse(calls.at(-1).options.body);
     assert.equal(conversationPayload.properties.max_call_duration, 180);
     assert.equal(conversationPayload.pal_id, 'p12345');
+    assert.deepEqual(conversationPayload.participant_tags, ['naya-primary-user-v1']);
+    assert.equal(conversationPayload.memory_stores, undefined);
+    assert.equal(conversationPayload.dynamic_greeting, true);
+    assert.match(conversationPayload.conversational_context, /Jangan selalu memakai kalimat sama/);
     const saved = await readFile(stateFile, 'utf8');
     assert.match(saved, /p12345/);
     assert.doesNotMatch(saved, /test-secret-123/);
   } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test('tag memori stabil lintas sesi dan override server bekerja tanpa data perangkat', async () => {
+  const bodies = [];
+  const client = makeTavusClient({ apiKey: 'dummy', envPalId: 'p-existing', memoryStore: 'naya_user_test_uuid',
+    fetchImpl: async (url, options) => {
+      if (url.endsWith('/v2/pals/p-existing')) return Response.json({ pal_id: 'p-existing', pal_name: 'Naya', default_face_id: FACE_ID,
+        layers: { conversational_flow: { turn_detection_model: 'sparrow-2', turn_taking_patience: 'low', pal_interruptibility: 'medium' } } });
+      bodies.push(JSON.parse(options.body));
+      return Response.json({ conversation_id: 'c12345', conversation_url: 'https://tavus.daily.co/c12345', status: 'active' });
+    },
+  });
+  await client.createConversation();
+  await client.createConversation();
+  assert.equal(bodies.length, 2);
+  for (const body of bodies) {
+    assert.deepEqual(body.participant_tags, ['naya_user_test_uuid']);
+    assert.equal(body.memory_stores, undefined);
+    assert.equal(body.device_id, undefined);
+    assert.equal(body.browser_fingerprint, undefined);
+    assert.equal(body.face_id, FACE_ID);
+    assert.deepEqual(body.properties.languages, ['id']);
+  }
 });
 
 test('PAL dari environment diverifikasi dan tidak dibuat ulang', async () => {
@@ -77,4 +104,14 @@ test('respons conversation yang tidak lengkap ditolak', async () => {
       : Response.json({ conversation_id: 'c12345', conversation_url: 'invalid', status: 'active' }),
   });
   await assert.rejects(client.createConversation(), (error) => error.code === 'MALFORMED_RESPONSE');
+});
+
+test('penolakan Tavus saat create conversation tidak membocorkan respons atau credential', async () => {
+  const client = makeTavusClient({ apiKey: 'private-test-key', envPalId: 'p-existing',
+    fetchImpl: async (url) => url.endsWith('/v2/pals/p-existing')
+      ? Response.json({ pal_id: 'p-existing', pal_name: 'Naya' })
+      : Response.json({ message: 'private-test-key plan unavailable' }, { status: 403 }),
+  });
+  await assert.rejects(client.createConversation(), (error) => error.code === 'API_ERROR' &&
+    !error.message.includes('private-test-key') && !error.message.includes('plan unavailable'));
 });
