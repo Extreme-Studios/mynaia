@@ -46,7 +46,7 @@ export function createConversationController({ api, render }) {
       await api.end(current.conversationId);
       session = null;
       phase = 'ended';
-      message = reason === 'duration' ? 'Sesi selesai karena batas durasi.' : '';
+      message = reason === 'duration' ? 'Sesi selesai karena batas durasi.' : 'Sesi telah selesai.';
       update();
       return true;
     } catch (error) {

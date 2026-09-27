@@ -1,5 +1,5 @@
 export const PRIMARY_USER_ID = 'naya_primary_user';
-const TABLES = new Set(['users','conversation_sessions','conversation_messages','memories','user_profile','open_loops','session_summaries']);
+const TABLES = new Set(['users','conversation_sessions','conversation_messages','memories','user_profile','open_loops','session_summaries','app_settings']);
 
 export class StorageError extends Error {
   constructor(code) { super(code); this.name = 'StorageError'; this.code = code; }

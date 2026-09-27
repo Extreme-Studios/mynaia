@@ -16,6 +16,8 @@ async function invoke(handler, method, url, { body, cookie } = {}) {
   return response;
 }
 
+const activeProfileStore = { getActive: async () => 1 };
+
 test('Vercel gate menolak sesi tanpa kode, lalu mengizinkan setelah login', async () => {
   let creates = 0;
   let ends = 0;
@@ -27,6 +29,7 @@ test('Vercel gate menolak sesi tanpa kode, lalu mengizinkan setelah login', asyn
       endConversation: async () => { ends++; },
     },
     memory: { prepareContext: async () => '', recordStarted: async () => {}, recordEnded: async () => {} },
+    activeProfileStore,
   });
   const status = await invoke(handler, 'GET', '/api/handler?route=access-status');
   assert.deepEqual(status.body, { required: true, authorized: false });
@@ -69,6 +72,7 @@ test('Vercel hosted LLM tidak membutuhkan Gemini key untuk conversation mock', a
       return { conversationId: 'c12345', conversationUrl: 'https://tavus.daily.co/c12345', status: 'active' };
     } },
     memory: { prepareContext: async () => '', recordStarted: async () => {} },
+    activeProfileStore,
   });
   const response = await invoke(handler, 'POST', '/api/handler?route=conversations');
   assert.equal(response.status, 201);
@@ -108,6 +112,7 @@ test('Vercel menyuntik context Supabase, merekam sesi, dan melindungi sync', asy
     memory: { status: async () => ({ enabled: true, provider: 'supabase', storeConfigured: true, pendingSessions: 0 }),
       prepareContext: async () => 'Adi suka kopi susu', recordStarted: async (id) => { calls.push(['started', id]); },
       recordEnded: async (id) => { calls.push(['ended', id]); }, processPending: async () => ({ processed: 1 }) },
+    activeProfileStore,
   });
   const denied = await invoke(handler, 'POST', '/api/handler?route=memory-sync');
   assert.equal(denied.status, 401);
@@ -131,6 +136,7 @@ test('sesi Tavus ditutup jika arsip Supabase gagal dibuat', async () => {
     client: { configured: true, createConversation: async () => ({ conversationId: 'c12345', conversationUrl: 'https://tavus.daily.co/c12345', status: 'active' }),
       endConversation: async () => { ended = true; } },
     memory: { prepareContext: async () => '', recordStarted: async () => { throw new Error('mock storage failure'); } },
+    activeProfileStore,
   });
   const response = await invoke(handler, 'POST', '/api/handler?route=conversations');
   assert.equal(response.status, 500);

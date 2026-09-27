@@ -1,5 +1,15 @@
 # Milestone 5 — Product UI, PWA, Multi-Mode
 
+## Multi-Tavus Profile Engine
+
+Patch ini mendukung delapan profil bernama **Tavis 1–8**. Semua delapan API key yang disimpan di Windows Credential Manager berhasil diautentikasi dengan API Tavus GET. Stock Face Naya dan Dr. Paws muncul pada daftar Face seluruh profil. PAL Naya dan Dr. Paws yang terkonfigurasi baru ada di profil 1; profil 2–8 sengaja parsial. Tidak ada PAL atau conversation baru yang dibuat selama patch, dan tidak ada auto retry atau auto rotasi. Untuk menyiapkan profil 2–8, buat/pilih PAL pada akun Tavus yang bersangkutan secara eksplisit, lalu pasang ID PAL di environment profil itu dan deploy ulang. PAL profil 1 tidak disalin lintas akun.
+
+Migrasi `003_tavus_profile_switcher.sql` diterapkan pada proyek Supabase yang sudah ada. `naya_app_settings` memiliki RLS aktif dan akses service role saja, dengan `tavus_active_profile=1`. Kolom `naya_conversation_sessions.tavus_profile_used` bernilai 1–8, default 1 untuk sesi lama. Pilihan admin berlaku global untuk laptop dan HP pada sesi berikutnya. Sesi berjalan tetap memakai profil sebelumnya untuk End, status, dan transkrip. Memori tetap di Supabase, memakai identitas Naya yang sama, terlepas dari key/PAL/Face Tavus.
+
+Admin Settings memakai `MYNAIA_ADMIN_SECRET` tersimpan hanya di `.env` lokal yang diabaikan Git dan Vercel Production. Cookie admin HttpOnly, SameSite=Strict, Secure di production, dan berlaku 15 menit. API profil hanya mengembalikan boolean konfigurasi. Tombol inspeksi memakai Tavus GET saja. Usage ditulis “check Tavus dashboard”; tidak ada estimasi menit. Kegagalan provider saat create menampilkan pesan singkat dan tidak beralih profil otomatis. Saat sesi berakhir, UI menampilkan “Sesi telah selesai.” dengan **Ngobrol lagi** dan **Kembali ke Beranda**; GET status provider berkala hanya berlangsung saat ada sesi aktif. Perilaku live ini belum divalidasi manusia.
+
+Variabel environment per profil mengikuti `TAVUS_PROFILE_<1..8>_{API_KEY,NAYA_PAL_ID,NAYA_FACE_ID,DR_PAWS_PAL_ID,DR_PAWS_FACE_ID}`. Fallback variabel Tavus lama untuk profil 1 hanya berlaku bila key profil 1 belum diisi. Profil 2–8 tidak mengambil PAL dari profil 1. Source dan bundle frontend tidak boleh memuat secret. Uji mock tidak membuat conversation Tavus nyata.
+
 Status: implementation ready; human UI/live validation is still required. No Tavus conversation was created while implementing this milestone. Production remains one MyNaiA app at `https://mynaia.extremestudiosai.com`.
 
 ## Product and modes

@@ -9,6 +9,8 @@ let accessGranted = true;
 let mountedUrl = '';
 let activeId = '';
 let durationTimer;
+let statusTimer;
+let statusChecking = false;
 let wakeLock;
 let fullscreenFallback = false;
 
@@ -54,6 +56,7 @@ const api = {
     setTimeout(() => { apiRequest('/api/memory/sync', { method: 'POST' }).catch(() => {}); }, 8000);
     return result;
   },
+  status: (id) => apiRequest(`/api/conversations/${encodeURIComponent(id)}/status`),
 };
 
 function updateOffline() {
@@ -123,9 +126,22 @@ function render(state) {
     clearTimeout(durationTimer);
     const seconds = state.session.durationSeconds || Number($('#duration').value) * 60;
     durationTimer = setTimeout(() => { if (controller.snapshot().session) controller.end('duration'); }, seconds * 1000);
+    clearInterval(statusTimer);
+    statusTimer = setInterval(async () => {
+      if (statusChecking || !navigator.onLine || !controller.snapshot().session) return;
+      statusChecking = true;
+      try {
+        const result = await api.status(activeId);
+        if (result.status === 'ended' && controller.snapshot().session?.conversationId === activeId) {
+          await controller.end('provider');
+        }
+      } catch { /* A temporary status-read failure must not close a live call. */ }
+      finally { statusChecking = false; }
+    }, 20000);
     acquireWakeLock();
   } else if (!active && mountedUrl) {
     clearTimeout(durationTimer);
+    clearInterval(statusTimer);
     if (fullscreenActive()) exitFullscreen();
     $('#conversation-frame').removeAttribute('src');
     $('#conversation-frame').hidden = true;
@@ -173,6 +189,7 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('online', updateOffline);
 window.addEventListener('offline', updateOffline);
 window.addEventListener('pagehide', () => {
+  clearInterval(statusTimer);
   releaseWakeLock();
   if (activeId) navigator.sendBeacon(`/api/conversations/${encodeURIComponent(activeId)}/end`);
 });
@@ -201,6 +218,81 @@ $('#setting-duration').addEventListener('change', () => {
   try { localStorage.setItem('mynaia.duration', $('#setting-duration').value); } catch { /* Private browsing. */ }
   if (!$('#duration').disabled) $('#duration').value = $('#setting-duration').value;
   $('#duration-warning').hidden = $('#duration').value !== '20';
+});
+
+async function refreshModeStatus() {
+  const data = await apiRequest('/api/modes/status');
+  modeReady.naya = Boolean(data.naya);
+  modeReady.dr_paws = Boolean(data.drPaws);
+  if (!isHome) render(controller.snapshot());
+}
+
+async function refreshAdminProfiles() {
+  const data = await apiRequest('/api/admin/tavus-profiles');
+  $('#admin-login').hidden = true;
+  $('#admin-controls').hidden = false;
+  const select = $('#admin-profile');
+  select.replaceChildren();
+  for (const item of data.profiles) {
+    const option = document.createElement('option');
+    option.value = String(item.profile);
+    option.textContent = `Tavis ${item.profile} — ${item.configured ? 'Configured' : item.apiConfigured ? 'Partially configured' : 'Not configured'}`;
+    select.append(option);
+  }
+  select.value = String(data.active);
+  const selected = data.profiles.find((item) => item.active);
+  $('#admin-profile-status').textContent = `Aktif: Tavis ${data.active}. Naya: ${selected?.nayaConfigured ? 'siap' : 'belum dikonfigurasi'}. Dr. Paws: ${selected?.drPawsConfigured ? 'siap' : 'belum dikonfigurasi'}.`;
+  $('#admin-message').textContent = '';
+}
+
+async function refreshAdmin() {
+  try {
+    const status = await apiRequest('/api/admin/status');
+    if (!status.enabled) {
+      $('#admin-login').hidden = true;
+      $('#admin-controls').hidden = true;
+      $('#admin-message').textContent = 'Admin Settings belum dikonfigurasi.';
+    } else if (status.authenticated) await refreshAdminProfiles();
+    else {
+      $('#admin-login').hidden = false;
+      $('#admin-controls').hidden = true;
+      $('#admin-message').textContent = 'Masukkan admin secret untuk memilih Tavus Engine.';
+    }
+  } catch {
+    $('#admin-message').textContent = 'Admin Settings tidak tersedia.';
+  }
+}
+
+$('#admin-settings').addEventListener('toggle', () => { if ($('#admin-settings').open) refreshAdmin(); });
+$('#admin-login').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const secret = $('#admin-secret').value;
+  $('#admin-secret').value = '';
+  try {
+    await apiRequest('/api/admin/login', { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ secret }) });
+    await refreshAdminProfiles();
+  } catch (error) { $('#admin-message').textContent = error.message; }
+});
+$('#admin-apply').addEventListener('click', async () => {
+  $('#admin-apply').disabled = true;
+  try {
+    await apiRequest('/api/admin/tavus-profile', { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ profile: Number($('#admin-profile').value) }) });
+    await refreshAdminProfiles();
+    await refreshModeStatus();
+  } catch (error) { $('#admin-message').textContent = error.message; }
+  finally { $('#admin-apply').disabled = false; }
+});
+$('#admin-inspect').addEventListener('click', async () => {
+  $('#admin-inspect').disabled = true;
+  try {
+    const result = await apiRequest('/api/admin/tavus-profile/inspect', { method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ profile: Number($('#admin-profile').value) }) });
+    $('#admin-message').textContent = `Tavis ${result.profile}: autentikasi ${result.apiAuthenticated ? 'berhasil' : 'belum ada key'}; Naya PAL ${result.nayaPalAccessible ? 'tersedia' : 'belum tersedia'}; Dr. Paws PAL ${result.drPawsPalAccessible ? 'tersedia' : 'belum tersedia'}; Face Naya ${result.nayaFaceAccessible ? 'tersedia' : 'belum tersedia'}; Face Dr. Paws ${result.drPawsFaceAccessible ? 'tersedia' : 'belum tersedia'}.`;
+  } catch (error) { $('#admin-message').textContent = error.message; }
+  finally { $('#admin-inspect').disabled = false; }
 });
 
 updateOffline();

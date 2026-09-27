@@ -2,6 +2,14 @@
 
 **Current Milestone: 5 – Product UI / PWA / Multi-Mode**
 
+## Multi-Tavus Profile Engine
+
+Settings → Admin Settings menampilkan delapan pilihan **Tavis 1–8**. Admin login memakai `MYNAIA_ADMIN_SECRET`, terpisah dari kode akses pengguna; sesi admin berupa cookie HttpOnly selama 15 menit. Tombol **Periksa konfigurasi** hanya membaca autentikasi, PAL, dan Face Tavus. Tombol **Gunakan profil** menyimpan pilihan global `tavus_active_profile` di Supabase; laptop dan HP memakai profil yang sama untuk sesi **berikutnya**. Sesi berjalan dan pengambilan transkrip tetap memakai profil yang tercatat pada sesi itu. Tidak ada pergantian otomatis saat quota habis.
+
+Setiap profil membutuhkan API key, PAL Naya, PAL Dr. Paws, dan Face masing-masing dalam environment server. Pola `TAVUS_PROFILE_<1..8>_{API_KEY,NAYA_PAL_ID,NAYA_FACE_ID,DR_PAWS_PAL_ID,DR_PAWS_FACE_ID}` ada di `.env.example`. Profil 1 memakai variabel Tavus lama sebagai fallback hanya bila `TAVUS_PROFILE_1_API_KEY` belum diisi. Key tidak masuk browser, GitHub, atau respons status. `MYNAIA_ADMIN_SECRET` berada di `.env` lokal yang diabaikan Git dan Vercel Production; jangan gunakan `NAYA_ACCESS_CODE` sebagai admin secret.
+
+Profil 1 telah lengkap. Profil 2–8 memiliki key dan akses ke kedua stock Face, tetapi PAL per akun belum dikonfigurasi; Start untuk mode yang PAL-nya belum ada ditolak sebelum membuat conversation. Buat atau pilih PAL secara sadar pada akun Tavus masing-masing, lalu isi PAL ID khusus profil di environment dan deploy ulang. Aplikasi tidak membuat PAL otomatis untuk profil baru. Persistent memory tetap hanya di Supabase dengan identitas `naya_primary_user`; Tavus adalah mesin percakapan yang dapat diganti. Tidak ada uji live atau penggunaan conversation minutes dalam patch ini.
+
 MyNaiA memiliki home `/` dan dua mode `/naya` serta `/dr-paws` pada satu situs `https://mynaia.extremestudiosai.com`. Naya tetap memakai memori Supabase; Dr. Paws memakai PAL, Face, dan namespace Supabase sendiri untuk arsip sesi/transkrip tanpa profiling anak permanen. UI mobile-first mencakup PWA, fullscreen, Wake Lock, dan durasi 3/5/10/20 menit (default 5). Quality Auto aktif; Low/High dinonaktifkan karena iframe saat ini belum memberi kontrol kualitas stream yang terverifikasi. Rincian dan rencana uji manusia ada di `docs/milestone-5.md`.
 
 Naya adalah prototype AI companion berbentuk percakapan video. PAL Tavus memakai persona Naya dari `character/system-prompt.md`; wajah sementara adalah stock Face Anna (`rc9cff32ceba`). Naya adalah AI, bukan manusia, terapis, dokter, atau pengganti hubungan manusia.

@@ -4,6 +4,9 @@ import { geminiConfig } from '../app/backend/gemini.mjs';
 import { makeSupabaseStore, StorageError } from '../app/backend/supabase.mjs';
 import { makeMemoryService } from '../app/backend/memory-service.mjs';
 import { parseMode, parseDuration } from '../app/backend/modes.mjs';
+import { PROFILE_COUNT, makeActiveProfileStore, modeProfileError, parseProfile, publicProfileStatus, resolveTavusProfile } from '../app/backend/tavus-profiles.mjs';
+import { adminAuthorized, createAdminCookie, sameOrigin, secretMatches } from '../app/backend/admin-auth.mjs';
+import { inspectTavusProfile } from '../app/backend/tavus-profile-inspect.mjs';
 
 export const config = { maxDuration: 60 };
 
@@ -55,23 +58,35 @@ async function readJson(request) {
   catch { throw new TavusError('INVALID_REQUEST', 'JSON tidak valid.', 400); }
 }
 
-export function createVercelHandler({ env = process.env, client, memory, store: injectedStore } = {}) {
+export function createVercelHandler({ env = process.env, client, memory, store: injectedStore,
+  activeProfileStore, clientFactory = makeTavusClient } = {}) {
   const gemini = geminiConfig(env);
-  const tavus = client || makeTavusClient({
-    apiKey: env.TAVUS_API_KEY,
-    envPalId: env.TAVUS_NAYA_PAL_ID || env.TAVUS_PAL_ID,
+  const firstProfile = resolveTavusProfile(1, env);
+  const tavus = client || clientFactory({
+    apiKey: firstProfile.apiKey,
+    envPalId: firstProfile.nayaPalId,
+    faceId: firstProfile.nayaFaceId,
     gemini: { apiKey: env.GEMINI_API_KEY, model: gemini.model },
   });
-  const drConfigured = Boolean(env.TAVUS_DR_PAWS_PAL_ID?.trim() && env.TAVUS_DR_PAWS_FACE_ID?.trim());
-  const drPaws = makeTavusClient({ apiKey: env.TAVUS_API_KEY, envPalId: env.TAVUS_DR_PAWS_PAL_ID,
-    faceId: env.TAVUS_DR_PAWS_FACE_ID || '', mode: 'dr_paws' });
+  const drPaws = clientFactory({ apiKey: firstProfile.apiKey, envPalId: firstProfile.drPawsPalId,
+    faceId: firstProfile.drPawsFaceId, mode: 'dr_paws' });
+  const clientForProfile = (profile, mode) => {
+    if (profile === 1) return mode === 'naya' ? tavus : drPaws;
+    const config = resolveTavusProfile(profile, env);
+    return clientFactory({ apiKey: config.apiKey, envPalId: mode === 'naya' ? config.nayaPalId : config.drPawsPalId,
+      faceId: mode === 'naya' ? config.nayaFaceId : config.drPawsFaceId, mode });
+  };
   const accessCode = env.NAYA_ACCESS_CODE?.trim() || '';
+  const adminSecret = env.MYNAIA_ADMIN_SECRET?.trim() || '';
   const store = injectedStore || makeSupabaseStore({ url: env.SUPABASE_URL, key: env.SUPABASE_SERVICE_ROLE_KEY });
-  const memoryService = memory || makeMemoryService({ store, tavus, palId: env.TAVUS_NAYA_PAL_ID || env.TAVUS_PAL_ID, faceId: 'rc9cff32ceba',
+  const profiles = activeProfileStore || makeActiveProfileStore({ store });
+  const memoryService = memory || makeMemoryService({ store, tavus, palId: firstProfile.nayaPalId, faceId: firstProfile.nayaFaceId,
+    tavusForProfile: (profile) => clientForProfile(profile, 'naya'),
     extract: (messages) => import('../app/backend/memory-extract.mjs').then(({ extractWithGemini }) =>
       extractWithGemini(messages, { apiKey: env.GEMINI_API_KEY, model: env.GEMINI_MEMORY_MODEL || 'gemini-2.5-flash' })) });
-  const drMemory = makeMemoryService({ store, tavus: drPaws, palId: env.TAVUS_DR_PAWS_PAL_ID,
-    faceId: env.TAVUS_DR_PAWS_FACE_ID, mode: 'dr_paws' });
+  const drMemory = makeMemoryService({ store, tavus: drPaws, palId: firstProfile.drPawsPalId,
+    faceId: firstProfile.drPawsFaceId, mode: 'dr_paws',
+    tavusForProfile: (profile) => clientForProfile(profile, 'dr_paws') });
 
   return async function handler(request, response) {
     const url = new URL(request.url, 'https://mynaia.local');
@@ -85,9 +100,45 @@ export function createVercelHandler({ env = process.env, client, memory, store: 
         json(response, 200, await memoryService.status());
         return;
       }
+      if (request.method === 'GET' && route === 'admin-status') {
+        json(response, 200, { enabled: Boolean(adminSecret), authenticated: adminAuthorized(request, adminSecret) });
+        return;
+      }
+      if (request.method === 'POST' && route === 'admin-login') {
+        if (!adminSecret) throw new TavusError('ADMIN_NOT_CONFIGURED', 'Admin Settings belum dikonfigurasi.', 503);
+        if (!sameOrigin(request)) throw new TavusError('INVALID_ORIGIN', 'Asal permintaan tidak valid.', 403);
+        const body = await readJson(request);
+        if (!secretMatches(body.secret, adminSecret)) throw new TavusError('ADMIN_UNAUTHORIZED', 'Admin secret salah.', 401);
+        const secure = Boolean(env.VERCEL_ENV || String(request.headers['x-forwarded-proto'] || '').includes('https'));
+        json(response, 200, { authenticated: true }, { 'set-cookie': createAdminCookie(adminSecret, { secure }) });
+        return;
+      }
+      if ((request.method === 'GET' && route === 'admin-profiles') ||
+          (request.method === 'POST' && (route === 'admin-profile' || route === 'admin-profile-inspect'))) {
+        if (!adminAuthorized(request, adminSecret)) throw new TavusError('ADMIN_UNAUTHORIZED', 'Login admin diperlukan.', 401);
+        if (request.method === 'POST' && !sameOrigin(request)) throw new TavusError('INVALID_ORIGIN', 'Asal permintaan tidak valid.', 403);
+        if (route === 'admin-profiles') {
+          const active = await profiles.getActive();
+          json(response, 200, { active, profiles: Array.from({ length: PROFILE_COUNT }, (_, i) =>
+            publicProfileStatus(resolveTavusProfile(i + 1, env), active)) });
+          return;
+        }
+        const body = await readJson(request);
+        const profile = parseProfile(body.profile);
+        if (route === 'admin-profile-inspect') {
+          json(response, 200, await inspectTavusProfile(resolveTavusProfile(profile, env)));
+          return;
+        }
+        if (!resolveTavusProfile(profile, env).apiKey) throw new TavusError('PROFILE_NOT_CONFIGURED', 'Profil Tavus ini belum memiliki API key.', 409);
+        await profiles.setActive(profile);
+        json(response, 200, { active: profile });
+        return;
+      }
       if (request.method === 'GET' && route === 'mode-status') {
-        json(response, 200, { naya: Boolean(tavus.configured && (env.TAVUS_NAYA_PAL_ID || env.TAVUS_PAL_ID)),
-          drPaws: Boolean(drPaws.configured && drConfigured) });
+        const active = await profiles.getActive();
+        const current = resolveTavusProfile(active, env);
+        json(response, 200, { naya: !modeProfileError(current, 'naya'),
+          drPaws: !modeProfileError(current, 'dr_paws') });
         return;
       }
       if (request.method === 'GET' && route === 'gemini-status') {
@@ -95,9 +146,11 @@ export function createVercelHandler({ env = process.env, client, memory, store: 
         return;
       }
       if (request.method === 'GET' && route === 'tavus-status') {
+        const active = await profiles.getActive();
+        const current = resolveTavusProfile(active, env);
         json(response, 200, {
-          configured: tavus.configured,
-          palConfigured: Boolean((env.TAVUS_NAYA_PAL_ID || env.TAVUS_PAL_ID)?.trim()),
+          configured: Boolean(current.apiKey),
+          palConfigured: !modeProfileError(current, 'naya'),
           conversationActive: null,
         });
         return;
@@ -118,25 +171,28 @@ export function createVercelHandler({ env = process.env, client, memory, store: 
         json(response, 200, { authorized: true }, { 'set-cookie': cookie });
         return;
       }
-      if (request.method === 'POST' && (route === 'conversations' || route === 'end')) {
+      if ((request.method === 'POST' && (route === 'conversations' || route === 'end')) ||
+          (request.method === 'GET' && route === 'conversation-status')) {
         if (!authorized(request, accessCode)) {
           json(response, 401, { error: 'Masukkan kode akses dulu.', code: 'ACCESS_REQUIRED' });
           return;
-        }
-        if (!tavus.configured || !(env.TAVUS_NAYA_PAL_ID || env.TAVUS_PAL_ID)?.trim()) {
-          throw new TavusError('CONFIG_REQUIRED', 'Konfigurasi Naya di server belum lengkap.', 503);
         }
         if (route === 'conversations') {
           const body = await readJson(request);
           let mode, durationSeconds;
           try { mode = parseMode(body.mode ?? 'naya'); durationSeconds = parseDuration(body.durationMinutes ?? 5); }
           catch (error) { throw new TavusError(error.message, 'Mode atau durasi tidak valid.', 400); }
-          if (mode === 'dr_paws' && !drConfigured) throw new TavusError('DR_PAWS_NOT_CONFIGURED', 'Dr. Paws belum dikonfigurasi.', 503);
+          const activeProfile = await profiles.getActive();
+          const current = resolveTavusProfile(activeProfile, env);
+          const configError = modeProfileError(current, mode);
+          if (configError) throw configError;
           const selectedMemory = mode === 'naya' ? memoryService : drMemory;
-          const selectedTavus = mode === 'naya' ? tavus : drPaws;
+          const selectedTavus = clientForProfile(activeProfile, mode);
           const context = await selectedMemory.prepareContext();
           const session = await selectedTavus.createConversation({ conversationalContext: context, durationMinutes: durationSeconds / 60 });
-          try { await selectedMemory.recordStarted(session.conversationId); }
+          try { await selectedMemory.recordStarted(session.conversationId, { profileUsed: activeProfile,
+            sessionPalId: mode === 'naya' ? current.nayaPalId : current.drPawsPalId,
+            sessionFaceId: mode === 'naya' ? current.nayaFaceId : current.drPawsFaceId }); }
           catch (error) {
             try { await selectedTavus.endConversation(session.conversationId); } catch { /* Avoid an orphaned paid session if storage fails. */ }
             throw error;
@@ -147,12 +203,18 @@ export function createVercelHandler({ env = process.env, client, memory, store: 
         const id = url.searchParams.get('id');
         if (!id || !/^[A-Za-z0-9_-]{4,80}$/.test(id)) throw new TavusError('INVALID_ID', 'Conversation ID tidak valid.', 400);
         let mode = 'naya';
+        let sessionProfile = 1;
         if (store.configured) {
-          const sessions = await store.select('conversation_sessions', { tavus_conversation_id: `eq.${id}` }, 'mode');
+          const sessions = await store.select('conversation_sessions', { tavus_conversation_id: `eq.${id}` }, 'mode,tavus_profile_used');
           if (!sessions.length) throw new TavusError('INVALID_ID', 'Conversation tidak ditemukan.', 404);
           mode = parseMode(sessions[0].mode);
+          sessionProfile = parseProfile(sessions[0].tavus_profile_used || 1);
         }
-        const selectedTavus = mode === 'naya' ? tavus : drPaws;
+        const selectedTavus = clientForProfile(sessionProfile, mode);
+        if (route === 'conversation-status') {
+          json(response, 200, await selectedTavus.getConversationStatus(id));
+          return;
+        }
         const selectedMemory = mode === 'naya' ? memoryService : drMemory;
         await selectedTavus.endConversation(id);
         try { await selectedMemory.recordEnded(id); }

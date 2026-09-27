@@ -20,7 +20,7 @@ export function buildMemoryContext({ profile = [], memories = [], summaries = []
 }
 
 export function makeMemoryService({ store, tavus, extract = extractWithGemini, userId = PRIMARY_USER_ID,
-  palId = '', faceId = '', mode = 'naya' }) {
+  palId = '', faceId = '', mode = 'naya', tavusForProfile = () => tavus }) {
   parseMode(mode);
   async function status() {
     if (!store.configured) return { enabled: false, provider: 'supabase', storeConfigured: false, pendingSessions: 0 };
@@ -43,10 +43,11 @@ export function makeMemoryService({ store, tavus, extract = extractWithGemini, u
     return buildMemoryContext({ profile, memories, summaries, loops });
   }
 
-  async function recordStarted(conversationId) {
+  async function recordStarted(conversationId, { profileUsed = 1, sessionPalId = palId, sessionFaceId = faceId } = {}) {
     if (!store.configured) return;
     await store.upsert('conversation_sessions', {
-      user_id: userId, mode, tavus_conversation_id: conversationId, pal_id: palId || null, face_id: faceId || null,
+      user_id: userId, mode, tavus_conversation_id: conversationId, pal_id: sessionPalId || null, face_id: sessionFaceId || null,
+      tavus_profile_used: profileUsed,
       started_at: now(),
     }, 'tavus_conversation_id');
   }
@@ -61,7 +62,7 @@ export function makeMemoryService({ store, tavus, extract = extractWithGemini, u
     if (session.transcript_status === 'ready') {
       messages = await store.select('conversation_messages', { session_id: eq(session.id), order: 'position.asc' }, 'position,role,content');
     } else {
-      const conversation = await tavus.getConversation(conversationId);
+      const conversation = await tavusForProfile(session.tavus_profile_used || 1).getConversation(conversationId);
       messages = parseTranscript(conversation);
       if (messages === null) {
         await store.update('conversation_sessions', { id: eq(session.id) }, { last_sync_at: now() });

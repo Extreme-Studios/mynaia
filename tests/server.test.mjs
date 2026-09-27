@@ -4,7 +4,9 @@ import { once } from 'node:events';
 import { createNayaServer } from '../app/backend/server.mjs';
 
 async function withServer(client, run, memory) {
-  const server = createNayaServer({ client, gemini: { configured: true, model: 'gemini-3.8-flash' }, ...(memory ? { memory } : {}) });
+  const server = createNayaServer({ client, gemini: { configured: true, model: 'gemini-3.8-flash' },
+    env: client.configured ? { TAVUS_API_KEY: 'mock-key', TAVUS_NAYA_PAL_ID: 'p-existing' } : {},
+    activeProfileStore: { getActive: async () => 1 }, ...(memory ? { memory } : {}) });
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -27,7 +29,7 @@ test('health, status aman, frontend dan missing key', async () => {
     assert.deepEqual(status, { configured: false, palConfigured: false, conversationActive: false });
     const missing = await fetch(`${base}/api/conversations`, { method: 'POST' });
     assert.equal(missing.status, 503);
-    assert.equal((await missing.json()).code, 'KEY_REQUIRED');
+    assert.equal((await missing.json()).code, 'PROFILE_NOT_CONFIGURED');
     const page = await (await fetch(base)).text();
     assert.match(page, /Mulai Ngobrol/);
     assert.match(page, /id="error"/);

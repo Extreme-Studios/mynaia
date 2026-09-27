@@ -134,6 +134,6 @@ test('penolakan Tavus saat create conversation tidak membocorkan respons atau cr
       ? Response.json({ pal_id: 'p-existing', pal_name: 'Naya' })
       : Response.json({ message: 'private-test-key plan unavailable' }, { status: 403 }),
   });
-  await assert.rejects(client.createConversation(), (error) => error.code === 'API_ERROR' &&
+  await assert.rejects(client.createConversation(), (error) => error.code === 'CREATE_FAILED' &&
     !error.message.includes('private-test-key') && !error.message.includes('plan unavailable'));
 });

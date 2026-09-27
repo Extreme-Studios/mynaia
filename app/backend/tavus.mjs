@@ -190,7 +190,8 @@ export function makeTavusClient({
   async function createConversation({ conversationalContext = '', durationMinutes = 5 } = {}) {
     const maxCallDuration = parseDuration(durationMinutes);
     const palId = await getOrCreateNayaPal();
-    const data = await request('POST', '/v2/conversations', {
+    let data;
+    try { data = await request('POST', '/v2/conversations', {
       pal_id: palId,
       face_id: faceId,
       conversation_name: mode === 'naya' ? (usingGemini ? 'Naya Gemini Test' : 'Naya MyNaiA') : 'Dr. Paws MyNaiA',
@@ -202,7 +203,13 @@ export function makeTavusClient({
         participant_left_timeout: 0,
         participant_absent_timeout: 60,
       },
-    });
+    }); }
+    catch (error) {
+      if (error.code === 'API_ERROR') {
+        throw new TavusError('CREATE_FAILED', 'Profil Tavus aktif tidak dapat membuat sesi baru. Periksa usage atau pilih profil lain di pengaturan admin.', 502);
+      }
+      throw error;
+    }
     const conversationId = requiredString(data.conversation_id, 'conversation_id');
     const conversationUrl = requiredString(data.conversation_url, 'conversation_url');
     let url;
@@ -240,6 +247,12 @@ export function makeTavusClient({
     return request('GET', `/v2/conversations/${encodeURIComponent(conversationId)}?verbose=true`);
   }
 
+  async function getConversationStatus(conversationId) {
+    if (!/^[A-Za-z0-9_-]{4,80}$/.test(conversationId)) throw new TavusError('INVALID_ID', 'Conversation ID tidak valid.', 400);
+    const data = await request('GET', `/v2/conversations/${encodeURIComponent(conversationId)}`);
+    return { status: data.status === 'ended' ? 'ended' : 'active' };
+  }
+
   return {
     configured: Boolean(apiKey?.trim()),
     configuredPalId,
@@ -248,5 +261,6 @@ export function makeTavusClient({
     createConversation,
     endConversation,
     getConversation,
+    getConversationStatus,
   };
 }

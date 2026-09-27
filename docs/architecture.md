@@ -1,5 +1,11 @@
 # Arsitektur MyNaiA — Milestone 5
 
+## Multi-Tavus Profile Engine
+
+Supabase menyimpan `naya_app_settings.tavus_active_profile` sebagai nomor global 1–8 dan tetap menjadi satu-satunya sumber memori permanen. Vercel menyimpan delapan set kredensial Tavus; backend membaca nomor aktif dari Supabase pada setiap Start, memilih PAL dan Face sesuai mode, lalu menyimpan `tavus_profile_used` bersama PAL, Face, dan conversation ID di sesi. End, status provider, dan pengambilan transkrip memakai profil yang tercatat pada sesi, sehingga switch manual tidak memindahkan sesi berjalan. Memori Naya memakai ID pengguna yang sama di semua profil. Dr. Paws tetap terisolasi dalam namespace mode sendiri.
+
+Admin Settings memerlukan secret server terpisah, cookie HttpOnly 15 menit, dan pemeriksaan Origin untuk POST. API admin mengembalikan status konfigurasi tanpa key. Inspeksi profil hanya memakai Tavus GET untuk autentikasi dan akses PAL/Face; tidak ada create PAL atau conversation di jalur itu. Profil dengan PAL/Face yang belum diisi tidak dapat memulai mode terkait. Kegagalan create tidak memicu rotasi profil. Aplikasi menampilkan petunjuk memeriksa usage di dashboard Tavus tanpa mengarang sisa menit.
+
 Satu situs menyediakan home `/`, Naya `/naya`, dan Dr. Paws `/dr-paws`. Browser memakai UI video call vanilla JS; Vercel memegang credential dan memilih PAL/Face dari mode. Naya memakai PAL existing `p54bfaf633c5` dan Face `rc9cff32ceba`; Dr. Paws memakai PAL `pf2c904714a5` dan Face `r21a52c53fa4`. Frontend tidak menerima API key.
 
 Supabase adalah satu-satunya memori permanen. Migrasi `002_mode_namespaces.sql` memberi default `mode=naya` untuk seluruh data lama dan memungkinkan namespace `dr_paws` per user. Semua query memori Naya dibatasi `mode=naya`; Dr. Paws menyimpan session/transcript dengan `mode=dr_paws`, tanpa ekstraksi profil anak. Tavus hanya menangani percakapan realtime dan sumber transkrip. Mode dipilih sebelum call; backend menolak durasi selain 3/5/10/20 menit.
