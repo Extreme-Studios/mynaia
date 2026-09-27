@@ -1,15 +1,15 @@
 # Milestone 4 — Supabase Persistent Memory + Personalization
 
-Status: kode dan migrasi siap; koneksi Supabase dan uji dua sesi belum terverifikasi. **SOURCE OF TRUTH = SUPABASE** setelah konfigurasi dan migrasi aktif. Tavus tetap penyedia avatar/video, STT, TTS, dan lip sync. Gemini memproses transkrip setelah sesi. Vercel hanya backend aplikasi dan tidak menyimpan state permanen di filesystem.
+Status (27 September 2026): project Supabase `mynaia` aktif, migrasi berhasil, tujuh tabel dan RLS telah diverifikasi, dan koneksi baca/tulis server lokal berhasil. Environment Supabase Production Vercel telah diisi; verifikasi deployment dan uji recall dua sesi masih diperlukan. **SOURCE OF TRUTH = SUPABASE**. Tavus tetap penyedia avatar/video, STT, TTS, dan lip sync. Gemini memproses transkrip setelah sesi. Vercel hanya backend aplikasi dan tidak menyimpan state permanen di filesystem.
 
 ## Aktivasi
 
-1. Pilih project Supabase tujuan. Organisasi yang terbuka saat ini sudah mencapai batas dua project gratis; jangan jalankan migrasi di project PARFI sebelum pemilik menentukan project tujuan. Jalankan `supabase/migrations/001_naya_memory.sql` sekali melalui SQL Editor project pilihan. Semua tujuh tabel memakai awalan `naya_` agar terpisah dari tabel aplikasi lain.
-2. Isi `SUPABASE_URL` dan `SUPABASE_SERVICE_ROLE_KEY` di `.env` lokal dan environment server Vercel. Jangan taruh key di browser, source control, atau chat. Saat ini kedua nilai belum tersedia di project lokal, jadi koneksi nyata belum dapat dinyatakan berhasil.
+1. Project tujuan adalah Supabase `mynaia` (`fonhzclqymvqlqghmiwv`) di organisasi Extreme Studios, region Seoul. `supabase/migrations/001_naya_memory.sql` telah dijalankan melalui SQL Editor. Query verifikasi menemukan tepat tujuh tabel `naya_` dan `rowsecurity = true` untuk semuanya. Project PARFI tidak diubah.
+2. `SUPABASE_URL` dan `SUPABASE_SERVICE_ROLE_KEY` telah disimpan di `.env` lokal dan environment Production Vercel, tanpa masuk source control. Jangan taruh key di frontend, source control, atau chat. Uji lokal berhasil membuat/membaca `naya_primary_user` melalui Data API dengan key server.
 3. Pastikan `GEMINI_API_KEY` server-side tersedia untuk ekstraksi pasca-sesi. `GEMINI_MEMORY_MODEL` default `gemini-2.5-flash`, terpisah dari LLM percakapan Tavus-hosted.
 4. Cek `GET /api/memory/status`. `enabled: true` berarti konfigurasi server terisi dan tabel dapat dibaca. Angka pending menunjukkan sesi yang belum selesai diproses. Endpoint ini tidak mengirim isi transkrip, memori, user ID, atau key.
 
-Selama Supabase belum dikonfigurasi, alur panggilan lama tetap bisa dipakai dan Tavus `participant_tags` lama tetap dikirim sebagai fallback sementara. Begitu Supabase dikonfigurasi, backend **tidak** mengirim `participant_tags`; kontinuitas hanya memakai `naya_primary_user` di database aplikasi. Tidak ada Tavus PAL, Face, Sparrow-2, patience, interruptibility, atau LLM yang diubah.
+Jika Supabase tidak dikonfigurasi pada deployment lain, alur panggilan lama tetap bisa dipakai dan Tavus `participant_tags` lama dikirim sebagai fallback sementara. Pada konfigurasi Production ini, backend **tidak** mengirim `participant_tags`; kontinuitas hanya memakai `naya_primary_user` di database aplikasi. Tidak ada Tavus PAL, Face, Sparrow-2, patience, interruptibility, atau LLM yang diubah.
 
 ## Alur data
 
