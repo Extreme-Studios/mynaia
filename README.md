@@ -1,6 +1,8 @@
 # Naya Virtual Girl
 
-**Current Milestone: 4 – Persistent Memory + Personalization**
+**Current Milestone: 5 – Product UI / PWA / Multi-Mode**
+
+MyNaiA memiliki home `/` dan dua mode `/naya` serta `/dr-paws` pada satu situs `https://mynaia.extremestudiosai.com`. Naya tetap memakai memori Supabase; Dr. Paws memakai PAL, Face, dan namespace Supabase sendiri untuk arsip sesi/transkrip tanpa profiling anak permanen. UI mobile-first mencakup PWA, fullscreen, Wake Lock, dan durasi 3/5/10/20 menit (default 5). Quality Auto aktif; Low/High dinonaktifkan karena iframe saat ini belum memberi kontrol kualitas stream yang terverifikasi. Rincian dan rencana uji manusia ada di `docs/milestone-5.md`.
 
 Naya adalah prototype AI companion berbentuk percakapan video. PAL Tavus memakai persona Naya dari `character/system-prompt.md`; wajah sementara adalah stock Face Anna (`rc9cff32ceba`). Naya adalah AI, bukan manusia, terapis, dokter, atau pengganti hubungan manusia.
 
@@ -8,7 +10,7 @@ Naya adalah prototype AI companion berbentuk percakapan video. PAL Tavus memakai
 
 Milestone 1 lulus. Milestone 2 lulus secara fungsional menurut human test pengguna. Pada awal Milestone 3, Gemini dipakai sebagai BYO LLM. PAL existing sekarang memakai Tavus-hosted `tavus-gemma-4` untuk respons percakapan; Tavus tetap menyediakan sesi realtime, STT, turn-taking, TTS, dan rendering stock Face Anna. Hasil integrasi, backup rollback Gemini, dan batas validasi ada di `docs/milestone-3.md`.
 
-Milestone 4 direvisi: **PERSISTENT MEMORY PROVIDER = SUPABASE; TAVUS MEMORY = DISABLED**. Backend menyimpan arsip teks percakapan, ringkasan, profil, memori, dan open loop. Gemini memproses transkrip setelah sesi; Tavus tetap menangani video/audio realtime. Create conversation tidak mengirim `participant_tags` atau `memory_stores`, dan ditolak sebelum memanggil Tavus bila Supabase tidak siap. Memory store Tavus lama, bila ada, tidak dipakai atau dihapus otomatis. Identitas single-user `naya_primary_user` independen dari PAL, Tavus key, dan perangkat. Migrasi Supabase `mynaia` sudah diterapkan, koneksi server sudah aktif, dan `/api/memory/status` di Production mengembalikan `enabled: true`. Recall dua sesi dan ekstraksi pasca-sesi belum diuji live. Detail ada di `docs/milestone-4.md`.
+Milestone 4: **PERSISTENT MEMORY PROVIDER = SUPABASE; TAVUS MEMORY = DISABLED**. Backend menyimpan arsip teks, ringkasan, profil, memori, dan open loop. Gemini memproses transkrip setelah sesi; Tavus menangani video/audio realtime. Create conversation tidak mengirim `participant_tags` atau `memory_stores`, dan ditolak sebelum memanggil Tavus bila Supabase tidak siap. Identitas single-user `naya_primary_user` independen dari PAL, Tavus key, dan perangkat. Migrasi Supabase `mynaia` telah diterapkan. Recall lintas laptop/HP telah divalidasi oleh pengguna sebelum Milestone 5. Detail ada di `docs/milestone-4.md`.
 
 ## Menjalankan lokal
 
@@ -19,7 +21,7 @@ npm install
 npm run dev
 ```
 
-Buka `http://localhost:3000`. Server hanya mendengarkan pada `127.0.0.1`. Port tetap 3000 kecuali `PORT` diatur secara eksplisit. `npm test` menjalankan test mock tanpa Tavus live. `npm run check` memeriksa sintaks. Tidak ada langkah build karena HTML/CSS/JavaScript vanilla disajikan langsung oleh server.
+Buka `http://localhost:3000`. Server hanya mendengarkan pada `127.0.0.1`. Port tetap 3000 kecuali `PORT` diatur secara eksplisit. `npm test` menjalankan test mock tanpa Tavus live. `npm run check` memeriksa sintaks. `npm run build` menyiapkan aset PWA statis untuk Vercel.
 
 ## Konfigurasi Tavus dan Gemini
 
@@ -27,7 +29,7 @@ Salin `.env.example` menjadi `.env` di root proyek lalu isi `TAVUS_API_KEY` dan 
 
 `TAVUS_PAL_ID` tetap diarahkan ke PAL existing `p54bfaf633c5`. Nama historis PAL dan state lokal `app/backend/.naya-gemini-pal.json` tidak mengubah model aktif. PAL lama Milestone 2 tetap ada. Backend menerima model hosted Tavus maupun Gemini BYO lama untuk rollback. Kunci tidak dikirim ke frontend; `GEMINI_API_KEY` tetap tersimpan untuk pekerjaan backend mendatang dan tidak dipakai oleh layer LLM hosted.
 
-Setelah konfigurasi, buka halaman lokal, cek detail status, lalu tekan **Mulai Ngobrol** satu kali. Backend membuat conversation maksimum 180 detik dan menampilkan ruang resmi di iframe. Tavus/Daily UI di dalam iframe mengelola izin microphone; gunakan kontrol mic di ruang video. Tekan **Akhiri** untuk menutup sesi melalui backend. Jika browser menolak izin, periksa izin situs dan muat ulang; jangan menekan Start berulang kali saat sesi masih aktif. Browser production memerlukan HTTPS; localhost dapat dipakai untuk pengembangan.
+Setelah konfigurasi, buka halaman lokal, pilih mode dan durasi, lalu tekan **Mulai Ngobrol** satu kali. Backend hanya menerima 180/300/600/1200 detik (default 300) dan menampilkan ruang resmi di iframe. Tavus/Daily UI di dalam iframe mengelola izin serta mute microphone; gunakan kontrol mic di ruang video. Tekan **Akhiri** untuk menutup sesi melalui backend. Jika browser menolak izin, periksa izin situs dan muat ulang. Browser production memerlukan HTTPS; localhost dapat dipakai untuk pengembangan.
 
 **Batas biaya:** cek dashboard Tavus Free dan sisa menit sebelum uji nyata. Jangan aktifkan paket berbayar, overage, atau custom Face. Tidak ada panggilan Tavus otomatis saat `npm test`.
 
@@ -49,4 +51,4 @@ Frontend host mengetahui saat iframe termuat, tetapi belum memiliki event media 
 
 Repo GitHub private: `Extreme-Studios/mynaia`. Vercel project: `mynaia`; alias Vercel: `https://mynaia.vercel.app`. Domain khusus: `mynaia.extremestudiosai.com` melalui CNAME Domainesia. `npm run build` menyalin frontend ke `public/` saat build; API Vercel ada di `api/handler.js`. Sesi hosted memerlukan `TAVUS_API_KEY` dan `TAVUS_PAL_ID`; memori permanen memerlukan `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, dan `GEMINI_API_KEY` di server Vercel. `NAYA_ACCESS_CODE` membatasi pengunjung yang dapat membuat sesi Tavus. Kode dan API key hanya tersimpan di environment Vercel; `.env`, state PAL lokal, backup rollback, dan `.vercel` tidak dikirim ke GitHub. Vercel tidak membuat PAL otomatis bila ID tidak dikonfigurasi.
 
-Fungsi Vercel tidak menyimpan state sesi di memori. Tavus membatasi conversation sampai 180 detik dan tombol **Akhiri** memanggil endpoint Tavus. Jangan mengandalkan frontend sebagai bukti status perangkat atau kualitas percakapan. Bila situs dibuka publik tanpa kode akses, setiap pengunjung dapat memakai menit Tavus.
+Fungsi Vercel tidak menyimpan state sesi di memori. Tavus membatasi conversation sesuai durasi yang dipilih dan tombol **Akhiri** memanggil endpoint Tavus. Jangan mengandalkan frontend sebagai bukti status perangkat atau kualitas percakapan. Bila situs dibuka publik tanpa kode akses, setiap pengunjung dapat memakai menit Tavus.

@@ -7,10 +7,13 @@
     { "source": "/api/gemini/status", "destination": "/api/handler?route=gemini-status" },
     { "source": "/api/tavus/status", "destination": "/api/handler?route=tavus-status" },
     { "source": "/api/memory/status", "destination": "/api/handler?route=memory-status" },
+    { "source": "/api/modes/status", "destination": "/api/handler?route=mode-status" },
     { "source": "/api/memory/sync", "destination": "/api/handler?route=memory-sync" },
     { "source": "/api/access/status", "destination": "/api/handler?route=access-status" },
     { "source": "/api/access/login", "destination": "/api/handler?route=access-login" },
     { "source": "/api/conversations", "destination": "/api/handler?route=conversations" },
-    { "source": "/api/conversations/:id/end", "destination": "/api/handler?route=end&id=:id" }
+    { "source": "/api/conversations/:id/end", "destination": "/api/handler?route=end&id=:id" },
+    { "source": "/naya", "destination": "/index.html" },
+    { "source": "/dr-paws", "destination": "/index.html" }
   ]
 }

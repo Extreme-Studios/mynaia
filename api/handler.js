@@ -3,6 +3,7 @@ import { makeTavusClient, TavusError } from '../app/backend/tavus.mjs';
 import { geminiConfig } from '../app/backend/gemini.mjs';
 import { makeSupabaseStore, StorageError } from '../app/backend/supabase.mjs';
 import { makeMemoryService } from '../app/backend/memory-service.mjs';
+import { parseMode, parseDuration } from '../app/backend/modes.mjs';
 
 export const config = { maxDuration: 60 };
 
@@ -54,29 +55,39 @@ async function readJson(request) {
   catch { throw new TavusError('INVALID_REQUEST', 'JSON tidak valid.', 400); }
 }
 
-export function createVercelHandler({ env = process.env, client, memory } = {}) {
+export function createVercelHandler({ env = process.env, client, memory, store: injectedStore } = {}) {
   const gemini = geminiConfig(env);
   const tavus = client || makeTavusClient({
     apiKey: env.TAVUS_API_KEY,
-    envPalId: env.TAVUS_PAL_ID,
+    envPalId: env.TAVUS_NAYA_PAL_ID || env.TAVUS_PAL_ID,
     gemini: { apiKey: env.GEMINI_API_KEY, model: gemini.model },
   });
+  const drConfigured = Boolean(env.TAVUS_DR_PAWS_PAL_ID?.trim() && env.TAVUS_DR_PAWS_FACE_ID?.trim());
+  const drPaws = makeTavusClient({ apiKey: env.TAVUS_API_KEY, envPalId: env.TAVUS_DR_PAWS_PAL_ID,
+    faceId: env.TAVUS_DR_PAWS_FACE_ID || '', mode: 'dr_paws' });
   const accessCode = env.NAYA_ACCESS_CODE?.trim() || '';
-  const store = makeSupabaseStore({ url: env.SUPABASE_URL, key: env.SUPABASE_SERVICE_ROLE_KEY });
-  const memoryService = memory || makeMemoryService({ store, tavus, palId: env.TAVUS_PAL_ID, faceId: 'rc9cff32ceba',
+  const store = injectedStore || makeSupabaseStore({ url: env.SUPABASE_URL, key: env.SUPABASE_SERVICE_ROLE_KEY });
+  const memoryService = memory || makeMemoryService({ store, tavus, palId: env.TAVUS_NAYA_PAL_ID || env.TAVUS_PAL_ID, faceId: 'rc9cff32ceba',
     extract: (messages) => import('../app/backend/memory-extract.mjs').then(({ extractWithGemini }) =>
       extractWithGemini(messages, { apiKey: env.GEMINI_API_KEY, model: env.GEMINI_MEMORY_MODEL || 'gemini-2.5-flash' })) });
+  const drMemory = makeMemoryService({ store, tavus: drPaws, palId: env.TAVUS_DR_PAWS_PAL_ID,
+    faceId: env.TAVUS_DR_PAWS_FACE_ID, mode: 'dr_paws' });
 
   return async function handler(request, response) {
     const url = new URL(request.url, 'https://mynaia.local');
     const route = url.searchParams.get('route');
     try {
       if (request.method === 'GET' && route === 'health') {
-        json(response, 200, { status: 'ok', milestone: 4 });
+        json(response, 200, { status: 'ok', milestone: 5 });
         return;
       }
       if (request.method === 'GET' && route === 'memory-status') {
         json(response, 200, await memoryService.status());
+        return;
+      }
+      if (request.method === 'GET' && route === 'mode-status') {
+        json(response, 200, { naya: Boolean(tavus.configured && (env.TAVUS_NAYA_PAL_ID || env.TAVUS_PAL_ID)),
+          drPaws: Boolean(drPaws.configured && drConfigured) });
         return;
       }
       if (request.method === 'GET' && route === 'gemini-status') {
@@ -86,7 +97,7 @@ export function createVercelHandler({ env = process.env, client, memory } = {}) 
       if (request.method === 'GET' && route === 'tavus-status') {
         json(response, 200, {
           configured: tavus.configured,
-          palConfigured: Boolean(env.TAVUS_PAL_ID?.trim()),
+          palConfigured: Boolean((env.TAVUS_NAYA_PAL_ID || env.TAVUS_PAL_ID)?.trim()),
           conversationActive: null,
         });
         return;
@@ -112,15 +123,22 @@ export function createVercelHandler({ env = process.env, client, memory } = {}) 
           json(response, 401, { error: 'Masukkan kode akses dulu.', code: 'ACCESS_REQUIRED' });
           return;
         }
-        if (!tavus.configured || !env.TAVUS_PAL_ID?.trim()) {
+        if (!tavus.configured || !(env.TAVUS_NAYA_PAL_ID || env.TAVUS_PAL_ID)?.trim()) {
           throw new TavusError('CONFIG_REQUIRED', 'Konfigurasi Naya di server belum lengkap.', 503);
         }
         if (route === 'conversations') {
-          const context = await memoryService.prepareContext();
-          const session = await tavus.createConversation({ conversationalContext: context });
-          try { await memoryService.recordStarted(session.conversationId); }
+          const body = await readJson(request);
+          let mode, durationSeconds;
+          try { mode = parseMode(body.mode ?? 'naya'); durationSeconds = parseDuration(body.durationMinutes ?? 5); }
+          catch (error) { throw new TavusError(error.message, 'Mode atau durasi tidak valid.', 400); }
+          if (mode === 'dr_paws' && !drConfigured) throw new TavusError('DR_PAWS_NOT_CONFIGURED', 'Dr. Paws belum dikonfigurasi.', 503);
+          const selectedMemory = mode === 'naya' ? memoryService : drMemory;
+          const selectedTavus = mode === 'naya' ? tavus : drPaws;
+          const context = await selectedMemory.prepareContext();
+          const session = await selectedTavus.createConversation({ conversationalContext: context, durationMinutes: durationSeconds / 60 });
+          try { await selectedMemory.recordStarted(session.conversationId); }
           catch (error) {
-            try { await tavus.endConversation(session.conversationId); } catch { /* Avoid an orphaned paid session if storage fails. */ }
+            try { await selectedTavus.endConversation(session.conversationId); } catch { /* Avoid an orphaned paid session if storage fails. */ }
             throw error;
           }
           json(response, 201, session);
@@ -128,8 +146,16 @@ export function createVercelHandler({ env = process.env, client, memory } = {}) 
         }
         const id = url.searchParams.get('id');
         if (!id || !/^[A-Za-z0-9_-]{4,80}$/.test(id)) throw new TavusError('INVALID_ID', 'Conversation ID tidak valid.', 400);
-        await tavus.endConversation(id);
-        try { await memoryService.recordEnded(id); }
+        let mode = 'naya';
+        if (store.configured) {
+          const sessions = await store.select('conversation_sessions', { tavus_conversation_id: `eq.${id}` }, 'mode');
+          if (!sessions.length) throw new TavusError('INVALID_ID', 'Conversation tidak ditemukan.', 404);
+          mode = parseMode(sessions[0].mode);
+        }
+        const selectedTavus = mode === 'naya' ? tavus : drPaws;
+        const selectedMemory = mode === 'naya' ? memoryService : drMemory;
+        await selectedTavus.endConversation(id);
+        try { await selectedMemory.recordEnded(id); }
         catch (error) { console.error('Memory sync failed:', error?.code || error?.message?.split('_')[0] || 'ERROR'); }
         json(response, 200, { status: 'ended' });
         return;
@@ -138,7 +164,8 @@ export function createVercelHandler({ env = process.env, client, memory } = {}) 
         if (!authorized(request, accessCode) || !accessCode) {
           json(response, 401, { error: 'Akses diperlukan.', code: 'ACCESS_REQUIRED' }); return;
         }
-        json(response, 200, await memoryService.processPending());
+        const [nayaSync, pawsSync] = await Promise.all([memoryService.processPending(), drMemory.processPending()]);
+        json(response, 200, { processed: nayaSync.processed + pawsSync.processed });
         return;
       }
       json(response, 404, { error: 'Tidak ditemukan.' });

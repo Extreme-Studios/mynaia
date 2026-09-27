@@ -39,7 +39,7 @@ test('PAL dibuat sekali, disimpan, lalu dipakai ulang untuk conversation', async
     assert.equal((await client.createConversation()).conversationId, 'c12345');
     assert.equal(calls.filter((call) => call.url.endsWith('/v2/pals')).length, 1);
     const conversationPayload = JSON.parse(calls.at(-1).options.body);
-    assert.equal(conversationPayload.properties.max_call_duration, 180);
+    assert.equal(conversationPayload.properties.max_call_duration, 300);
     assert.equal(conversationPayload.pal_id, 'p12345');
     assert.equal(Object.hasOwn(conversationPayload, 'participant_tags'), false);
     assert.equal(Object.hasOwn(conversationPayload, 'memory_stores'), false);

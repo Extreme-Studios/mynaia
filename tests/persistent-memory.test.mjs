@@ -159,3 +159,24 @@ test('context Supabase masuk ke conversation stateless dan PAL latency tidak diu
   assert.deepEqual(bodies[0].properties.languages, ['id']);
   assert.equal(bodies[0].face_id, FACE_ID);
 });
+
+test('Dr. Paws hanya mengarsip transkrip dan tidak membaca profil atau memori Naya', async () => {
+  const store = fakeStore();
+  store.tables.users.push({ id: PRIMARY_USER_ID });
+  store.tables.user_profile.push({ user_id: PRIMARY_USER_ID, mode: 'naya', display_name: 'Nama rahasia Naya' });
+  store.tables.memories.push({ user_id: PRIMARY_USER_ID, mode: 'naya', category: 'PREFERENCE',
+    normalized_key: 'coffee', content: 'Kopi rahasia Naya', active: true });
+  const tavus = { getConversation: async () => ({ events: [{ event_type: 'application.transcription_ready',
+    properties: { transcript: [{ role: 'user', content: 'Aku suka kucing.' }] } }] }) };
+  const dr = makeMemoryService({ store, tavus, mode: 'dr_paws', palId: 'p-paws', faceId: 'r-paws',
+    extract: async () => { throw Error('Gemini should not profile a child'); } });
+  const context = await dr.prepareContext();
+  assert.doesNotMatch(context, /Nama rahasia Naya|Kopi rahasia Naya/);
+  await dr.recordStarted('c-paws');
+  assert.equal((await dr.recordEnded('c-paws')).status, 'ready');
+  assert.equal(store.tables.conversation_sessions.at(-1).mode, 'dr_paws');
+  assert.equal(store.tables.conversation_messages.length, 1);
+  assert.equal(store.tables.memories.length, 1);
+  assert.equal(store.tables.session_summaries.length, 0);
+  assert.equal(store.tables.user_profile.length, 1);
+});

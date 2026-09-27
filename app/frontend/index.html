@@ -3,45 +3,64 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#10192a">
-  <title>Mynaia — Ngobrol dengan Naya</title>
+  <meta name="theme-color" content="#111b2c">
+  <meta name="description" content="MyNaiA — teman AI untuk ngobrol dan bercerita.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MyNaiA">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
   <link rel="stylesheet" href="/styles.css">
   <script type="module" src="/app.js"></script>
+  <title>MyNaiA — Teman AI</title>
 </head>
 <body>
-  <main class="call-shell">
-    <header class="topbar">
-      <div class="brand"><strong>Mynaia</strong><span>Ngobrol dengan Naya</span></div>
-      <button id="debug-toggle" class="debug-toggle" type="button" aria-expanded="false" aria-controls="debug-panel">Detail</button>
+  <main id="app" class="app-shell">
+    <header class="app-header">
+      <a class="wordmark" href="/" aria-label="MyNaiA Beranda"><span class="brand-mark">M</span><span>MyNaiA</span></a>
+      <button id="settings-toggle" class="icon-button" type="button" aria-label="Buka pengaturan" aria-expanded="false" aria-controls="settings-panel">⚙</button>
     </header>
 
-    <section class="stage" aria-label="Area percakapan video Naya">
-      <div id="placeholder" class="placeholder">
-        <div class="avatar-mark" aria-hidden="true">N</div>
-        <h1>Ngobrol dengan Naya</h1>
-        <p>Teman ngobrol lewat panggilan video. Naya adalah karakter AI.</p>
+    <section id="home" class="home-view" aria-labelledby="home-title">
+      <div class="home-copy"><p class="eyebrow">RUANG CERITA DIGITAL</p><h1 id="home-title">MyNaiA</h1><p>Teman AI yang bisa menemani dan mengenalmu.</p></div>
+      <div class="mode-grid">
+        <article class="mode-card naya-card">
+          <div class="portrait naya-portrait" aria-hidden="true"><span class="portrait-orbit"></span><span class="human-hair"></span><span class="human-face"></span><span class="human-body"></span></div>
+          <div class="card-copy"><span class="card-kicker">PERSONAL COMPANION</span><h2>Naya</h2><p>Teman ngobrol personal yang mengenalmu dari waktu ke waktu.</p><a class="card-cta" href="/naya">Ngobrol dengan Naya <span aria-hidden="true">↗</span></a></div>
+        </article>
+        <article class="mode-card paws-card">
+          <div class="portrait paws-portrait" aria-hidden="true"><span class="portrait-orbit"></span><span class="cat-ear left"></span><span class="cat-ear right"></span><span class="cat-face"><i class="cat-eye left"></i><i class="cat-eye right"></i><i class="cat-nose"></i></span><span class="cat-coat"></span></div>
+          <div class="card-copy"><span class="card-kicker">TEMAN CERITA</span><h2>Dr. Paws</h2><p>Teman cerita yang ramah dan menyenangkan untuk anak.</p><a class="card-cta" href="/dr-paws">Ngobrol dengan Dr. Paws <span aria-hidden="true">↗</span></a></div>
+        </article>
       </div>
-      <iframe id="conversation-frame" title="Panggilan video Naya melalui Tavus" allow="camera; microphone; fullscreen; display-capture; autoplay" hidden></iframe>
-      <div id="status" class="status" role="status" aria-live="polite"><span class="status-dot"></span><span id="status-text">Ready</span></div>
+      <p class="home-note">Karakter AI. Percakapan membutuhkan internet dan izin mikrofon.</p>
     </section>
 
-    <div id="error" class="error" role="alert" hidden></div>
-    <form id="access-form" class="access-form" hidden>
-      <label for="access-code">Kode akses</label>
-      <input id="access-code" name="code" type="password" autocomplete="off" required>
-      <button type="submit">Masuk</button>
-      <span id="access-message" role="status"></span>
-    </form>
-    <footer class="controls" aria-label="Kontrol percakapan">
-      <button id="start" class="start" type="button">Mulai Ngobrol</button>
-      <button id="end" class="end" type="button" disabled>Akhiri</button>
-    </footer>
-    <p class="hint">Izin microphone akan diminta oleh ruang panggilan Tavus setelah Anda memulai. Gunakan kontrol mic di dalam video.</p>
-    <details id="debug-panel" class="debug-panel" hidden>
-      <summary>Detail uji</summary>
-      <p id="debug-text">Memeriksa konfigurasi lokal…</p>
-      <p class="quota">Tavus free minutes are limited. Start only when ready.</p>
-    </details>
+    <section id="call-view" class="call-view" hidden>
+      <div class="call-heading"><a class="back-link" href="/" aria-label="Kembali ke Beranda">← <span>Beranda</span></a><div><p class="eyebrow">VIDEO CONVERSATION</p><h1 id="mode-title">Naya</h1></div><span id="mode-badge" class="mode-badge">AI companion</span></div>
+      <div id="stage" class="stage" aria-label="Area video percakapan">
+        <div id="placeholder" class="placeholder"><div id="avatar-mark" class="avatar-mark">N</div><h2 id="placeholder-title">Siap ngobrol?</h2><p id="placeholder-description">Pilih durasi, lalu mulai saat kamu siap.</p></div>
+        <iframe id="conversation-frame" title="Ruang panggilan video Tavus" allow="camera; microphone; fullscreen; display-capture; autoplay" allowfullscreen hidden></iframe>
+        <div id="status" class="status" role="status" aria-live="polite"><span class="status-dot"></span><span id="status-text">Ready</span></div>
+        <button id="exit-fullscreen" class="exit-fullscreen icon-button" type="button" aria-label="Keluar dari layar penuh" hidden>✕</button>
+      </div>
+      <div id="error" class="error" role="alert" hidden></div>
+      <div id="offline" class="offline-note" role="status" hidden>Koneksi internet diperlukan untuk ngobrol dengan MyNaiA.</div>
+      <form id="access-form" class="access-form" hidden><label for="access-code">Kode akses MyNaiA</label><div><input id="access-code" name="code" type="password" autocomplete="off" required><button type="submit">Masuk</button></div><span id="access-message" role="status"></span></form>
+      <div id="precall" class="precall"><label for="duration">Durasi sesi</label><select id="duration" aria-label="Durasi sesi"><option value="3">3 menit</option><option value="5" selected>5 menit</option><option value="10">10 menit</option><option value="20">20 menit</option></select><p id="duration-warning" class="duration-warning" hidden>Durasi panjang memakai lebih banyak menit Tavus.</p></div>
+      <div class="controls" aria-label="Kontrol percakapan">
+        <button id="start" class="primary-button" type="button">Mulai Ngobrol</button>
+        <button id="mic-help" class="control-button" type="button" aria-label="Kontrol mikrofon di dalam video" hidden>🎙 <span>Mikrofon</span></button>
+        <button id="fullscreen" class="control-button" type="button" aria-label="Masuk layar penuh">⛶ <span>Fullscreen</span></button>
+        <button id="end" class="end-button" type="button" aria-label="Akhiri panggilan" disabled hidden>■ <span>Akhiri</span></button>
+      </div>
+      <p id="mic-hint" class="call-hint">Izin dan mute mikrofon dikendalikan melalui kontrol di dalam video.</p>
+      <div id="postcall" class="postcall" hidden><p id="postcall-text">Tadi seru ngobrol sama kamu.</p><div><button id="again" type="button">Ngobrol lagi</button><a href="/">Kembali ke Beranda</a></div></div>
+      <details id="debug-panel" class="debug-panel"><summary>Detail uji</summary><p id="debug-text">Memeriksa konfigurasi…</p></details>
+    </section>
+
+    <aside id="settings-panel" class="settings-panel" hidden aria-label="Pengaturan"><div class="settings-head"><h2>Pengaturan</h2><button id="settings-close" class="icon-button" type="button" aria-label="Tutup pengaturan">✕</button></div><label for="setting-duration">Durasi default</label><select id="setting-duration"><option value="3">3 menit</option><option value="5">5 menit</option><option value="10">10 menit</option><option value="20">20 menit</option></select><label for="quality">Kualitas video</label><select id="quality" aria-label="Kualitas video"><option value="auto">Auto — adaptif</option><option value="low" disabled>Low — memerlukan advanced video control</option><option value="high" disabled>High — memerlukan advanced video control</option></select><p>Audio tidak diubah. Mode saat ini: <strong id="settings-mode">Beranda</strong>.</p></aside>
   </main>
 </body>
 </html>

@@ -101,6 +101,7 @@ test('Vercel menyuntik context Supabase, merekam sesi, dan melindungi sync', asy
   const handler = createVercelHandler({ env: { TAVUS_API_KEY: 'tavus-private', TAVUS_PAL_ID: 'p-existing',
     SUPABASE_URL: 'https://example.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'supabase-private',
     NAYA_ACCESS_CODE: 'access-private' },
+    store: { configured: true, select: async (table, filters) => filters.mode === 'eq.dr_paws' ? [] : [{ mode: 'naya' }] },
     client: { configured: true,
       createConversation: async (options) => { calls.push(['create', options]); return { conversationId: 'c12345', conversationUrl: 'https://tavus.daily.co/c12345', status: 'active' }; },
       endConversation: async (id) => { calls.push(['end', id]); } },
@@ -114,7 +115,7 @@ test('Vercel menyuntik context Supabase, merekam sesi, dan melindungi sync', asy
   const cookie = login.headers['set-cookie'].split(';')[0];
   const created = await invoke(handler, 'POST', '/api/handler?route=conversations', { cookie });
   assert.equal(created.status, 201);
-  assert.deepEqual(calls[0][1], { conversationalContext: 'Adi suka kopi susu' });
+  assert.deepEqual(calls[0][1], { conversationalContext: 'Adi suka kopi susu', durationMinutes: 5 });
   assert.deepEqual(calls[1], ['started', 'c12345']);
   await invoke(handler, 'POST', '/api/handler?route=end&id=c12345', { cookie });
   assert.deepEqual(calls.at(-1), ['ended', 'c12345']);

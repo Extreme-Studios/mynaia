@@ -4,9 +4,10 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GEMINI_BASE_URL, DEFAULT_GEMINI_MODEL } from './gemini.mjs';
 import { MEMORY_CONTEXT } from './memory.mjs';
+import { parseDuration, parseMode } from './modes.mjs';
 
 export const FACE_ID = 'rc9cff32ceba';
-export const MAX_CALL_SECONDS = 180;
+export const MAX_CALL_SECONDS = 300;
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const defaultStateFile = join(root, 'app', 'backend', '.naya-pal.json');
 export const geminiStateFile = join(root, 'app', 'backend', '.naya-gemini-pal.json');
@@ -39,13 +40,16 @@ function requiredString(value, label) {
 
 export function makeTavusClient({
   apiKey = process.env.TAVUS_API_KEY,
-  envPalId = process.env.TAVUS_PAL_ID,
+  envPalId = process.env.TAVUS_NAYA_PAL_ID || process.env.TAVUS_PAL_ID,
+  mode = 'naya',
+  faceId = FACE_ID,
   stateFile = defaultStateFile,
   geminiPalStateFile = geminiStateFile,
   fetchImpl = fetch,
   baseUrl = 'https://tavusapi.com',
   gemini = null,
 } = {}) {
+  parseMode(mode);
   const usingGemini = Boolean(gemini);
   const effectiveStateFile = usingGemini ? geminiPalStateFile : stateFile;
   let palPromise;
@@ -90,6 +94,7 @@ export function makeTavusClient({
   }
 
   async function configuredPalId() {
+    if (mode === 'dr_paws') return envPalId?.trim() || null;
     if (usingGemini && envPalId?.trim() === 'p1be7dd26adf') return await readSavedPalId();
     return envPalId?.trim() || await readSavedPalId();
   }
@@ -149,16 +154,19 @@ export function makeTavusClient({
     if (palPromise) return palPromise;
     palPromise = (async () => {
       const existingId = await configuredPalId();
+      if (mode === 'dr_paws' && !faceId) throw new TavusError('DR_PAWS_NOT_CONFIGURED', 'Dr. Paws belum dikonfigurasi.', 503);
+      if (mode === 'dr_paws' && !existingId) throw new TavusError('DR_PAWS_NOT_CONFIGURED', 'Dr. Paws belum dikonfigurasi.', 503);
       if (!existingId) return createNayaPal();
       const data = await request('GET', `/v2/pals/${encodeURIComponent(existingId)}`);
-      if (data.pal_id !== existingId || !String(data.pal_name || '').toLowerCase().startsWith('naya')) {
-        throw new TavusError('INVALID_PAL', 'PAL yang dikonfigurasi bukan Naya. Periksa TAVUS_PAL_ID.', 409);
+      const expectedName = mode === 'naya' ? /^naya/i : /^dr\.? paws/i;
+      if (data.pal_id !== existingId || !expectedName.test(String(data.pal_name || ''))) {
+        throw new TavusError('INVALID_PAL', 'PAL yang dikonfigurasi tidak sesuai mode.', 409);
       }
       if (data.pipeline_mode && data.pipeline_mode !== 'full') {
         throw new TavusError('INVALID_PAL', 'PAL yang dikonfigurasi tidak memakai pipeline full.', 409);
       }
-      if (data.default_face_id && data.default_face_id !== FACE_ID) {
-        throw new TavusError('INVALID_PAL', 'PAL yang dikonfigurasi tidak memakai stock Face Anna.', 409);
+      if (data.default_face_id && data.default_face_id !== faceId) {
+        throw new TavusError('INVALID_PAL', 'PAL yang dikonfigurasi tidak memakai Face yang sesuai.', 409);
       }
       const llm = data.layers?.llm;
       // Tavus omits the hosted default LLM layer from GET PAL responses.
@@ -179,17 +187,18 @@ export function makeTavusClient({
     }
   }
 
-  async function createConversation({ conversationalContext = '' } = {}) {
+  async function createConversation({ conversationalContext = '', durationMinutes = 5 } = {}) {
+    const maxCallDuration = parseDuration(durationMinutes);
     const palId = await getOrCreateNayaPal();
     const data = await request('POST', '/v2/conversations', {
       pal_id: palId,
-      face_id: FACE_ID,
-      conversation_name: usingGemini ? 'Naya Gemini Test' : 'Naya MVP Test',
-      conversational_context: conversationalContext ? `${MEMORY_CONTEXT}\n${conversationalContext}` : MEMORY_CONTEXT,
+      face_id: faceId,
+      conversation_name: mode === 'naya' ? (usingGemini ? 'Naya Gemini Test' : 'Naya MyNaiA') : 'Dr. Paws MyNaiA',
+      conversational_context: mode === 'naya' ? (conversationalContext ? `${MEMORY_CONTEXT}\n${conversationalContext}` : MEMORY_CONTEXT) : conversationalContext,
       dynamic_greeting: true,
       properties: {
         languages: ['id'],
-        max_call_duration: MAX_CALL_SECONDS,
+        max_call_duration: maxCallDuration,
         participant_left_timeout: 0,
         participant_absent_timeout: 60,
       },
@@ -206,14 +215,23 @@ export function makeTavusClient({
       throw new TavusError('MALFORMED_RESPONSE', 'Conversation Tavus tidak aktif.');
     }
     console.log('Conversation created');
-    return { conversationId, conversationUrl, status: 'active' };
+    return { conversationId, conversationUrl, status: 'active', durationSeconds: maxCallDuration, mode };
   }
 
   async function endConversation(conversationId) {
     if (!/^[A-Za-z0-9_-]{4,80}$/.test(conversationId)) {
       throw new TavusError('INVALID_ID', 'Conversation ID tidak valid.', 400);
     }
-    await request('POST', `/v2/conversations/${encodeURIComponent(conversationId)}/end`);
+    try {
+      await request('POST', `/v2/conversations/${encodeURIComponent(conversationId)}/end`);
+    } catch (error) {
+      // Tavus may have ended a call at max_call_duration before our End request arrives.
+      if (error.code !== 'API_ERROR') throw error;
+      let current;
+      try { current = await getConversation(conversationId); }
+      catch { throw error; }
+      if (current.status !== 'ended') throw error;
+    }
     console.log('Conversation ended');
   }
 

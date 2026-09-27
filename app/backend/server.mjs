@@ -3,20 +3,36 @@ import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { makeTavusClient, MAX_CALL_SECONDS, TavusError } from './tavus.mjs';
+import { makeTavusClient, TavusError } from './tavus.mjs';
 import { geminiConfig } from './gemini.mjs';
 import { makeSupabaseStore, StorageError } from './supabase.mjs';
 import { makeMemoryService } from './memory-service.mjs';
+import { parseMode, parseDuration } from './modes.mjs';
 
 const directory = dirname(fileURLToPath(import.meta.url));
 const root = resolve(directory, '..', '..');
 const frontend = join(root, 'app', 'frontend');
 const files = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
+  ['/index.html', ['index.html', 'text/html; charset=utf-8']],
   ['/styles.css', ['styles.css', 'text/css; charset=utf-8']],
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/controller.mjs', ['controller.mjs', 'text/javascript; charset=utf-8']],
+  ['/manifest.webmanifest', ['manifest.webmanifest', 'application/manifest+json']],
+  ['/sw.js', ['sw.js', 'text/javascript; charset=utf-8']],
+  ['/icons/icon-192.png', ['icons/icon-192.png', 'image/png']],
+  ['/icons/icon-512.png', ['icons/icon-512.png', 'image/png']],
 ]);
+
+async function readJson(request) {
+  let raw = '';
+  for await (const chunk of request) {
+    raw += chunk;
+    if (raw.length > 1024) throw new TavusError('INVALID_REQUEST', 'Permintaan terlalu besar.', 413);
+  }
+  try { return JSON.parse(raw || '{}'); }
+  catch { throw new TavusError('INVALID_REQUEST', 'JSON tidak valid.', 400); }
+}
 
 function json(response, status, data) {
   response.writeHead(status, {
@@ -28,7 +44,11 @@ function json(response, status, data) {
 }
 
 export function createNayaServer({ client = makeTavusClient(), gemini = geminiConfig(),
-  memory = makeMemoryService({ store: makeSupabaseStore(), tavus: client, palId: process.env.TAVUS_PAL_ID, faceId: 'rc9cff32ceba' }) } = {}) {
+  store = makeSupabaseStore(), drClient = makeTavusClient({ mode: 'dr_paws', envPalId: process.env.TAVUS_DR_PAWS_PAL_ID,
+    faceId: process.env.TAVUS_DR_PAWS_FACE_ID || '' }),
+  memory = makeMemoryService({ store, tavus: client, palId: process.env.TAVUS_NAYA_PAL_ID || process.env.TAVUS_PAL_ID, faceId: 'rc9cff32ceba' }),
+  drMemory = makeMemoryService({ store, tavus: drClient, mode: 'dr_paws', palId: process.env.TAVUS_DR_PAWS_PAL_ID,
+    faceId: process.env.TAVUS_DR_PAWS_FACE_ID }) } = {}) {
   let activeConversation;
   let creating = false;
   let endTimer;
@@ -37,10 +57,12 @@ export function createNayaServer({ client = makeTavusClient(), gemini = geminiCo
     if (!activeConversation || activeConversation.conversationId !== id) {
       throw new TavusError('NOT_ACTIVE', 'Conversation tidak aktif di server ini.', 404);
     }
-    await client.endConversation(id);
+    const selectedClient = activeConversation.mode === 'dr_paws' ? drClient : client;
+    const selectedMemory = activeConversation.mode === 'dr_paws' ? drMemory : memory;
+    await selectedClient.endConversation(id);
     activeConversation = undefined;
     clearTimeout(endTimer);
-    try { await memory.recordEnded(id); }
+    try { await selectedMemory.recordEnded(id); }
     catch (error) { console.error('Memory sync failed:', error?.code || 'ERROR'); }
   }
 
@@ -48,16 +70,22 @@ export function createNayaServer({ client = makeTavusClient(), gemini = geminiCo
     const path = new URL(request.url, 'http://localhost').pathname;
     try {
       if (request.method === 'GET' && path === '/api/health') {
-        json(response, 200, { status: 'ok', milestone: 4 });
+        json(response, 200, { status: 'ok', milestone: 5 });
         return;
       }
       if (request.method === 'GET' && path === '/api/memory/status') {
         json(response, 200, await memory.status());
         return;
       }
+      if (request.method === 'GET' && path === '/api/modes/status') {
+        json(response, 200, { naya: Boolean(client.configured && await client.configuredPalId()),
+          drPaws: Boolean(drClient.configured && process.env.TAVUS_DR_PAWS_PAL_ID && process.env.TAVUS_DR_PAWS_FACE_ID) });
+        return;
+      }
 
       if (request.method === 'POST' && path === '/api/memory/sync') {
-        json(response, 200, await memory.processPending());
+        const [a, b] = await Promise.all([memory.processPending(), drMemory.processPending()]);
+        json(response, 200, { processed: a.processed + b.processed });
         return;
       }
 
@@ -82,18 +110,27 @@ export function createNayaServer({ client = makeTavusClient(), gemini = geminiCo
         }
         creating = true;
         try {
-          const context = await memory.prepareContext();
-          const session = await client.createConversation({ conversationalContext: context });
-          try { await memory.recordStarted(session.conversationId); }
+          const body = await readJson(request);
+          let mode, durationSeconds;
+          try { mode = parseMode(body.mode ?? 'naya'); durationSeconds = parseDuration(body.durationMinutes ?? 5); }
+          catch (error) { throw new TavusError(error.message, 'Mode atau durasi tidak valid.', 400); }
+          if (mode === 'dr_paws' && !(process.env.TAVUS_DR_PAWS_PAL_ID && process.env.TAVUS_DR_PAWS_FACE_ID)) {
+            throw new TavusError('DR_PAWS_NOT_CONFIGURED', 'Dr. Paws belum dikonfigurasi.', 503);
+          }
+          const selectedMemory = mode === 'dr_paws' ? drMemory : memory;
+          const selectedClient = mode === 'dr_paws' ? drClient : client;
+          const context = await selectedMemory.prepareContext();
+          const session = await selectedClient.createConversation({ conversationalContext: context, durationMinutes: durationSeconds / 60 });
+          try { await selectedMemory.recordStarted(session.conversationId); }
           catch (error) {
-            try { await client.endConversation(session.conversationId); } catch { /* Prevent an orphaned call. */ }
+            try { await selectedClient.endConversation(session.conversationId); } catch { /* Prevent an orphaned call. */ }
             throw error;
           }
-          activeConversation = session;
+          activeConversation = { ...session, mode };
           endTimer = setTimeout(async () => {
             try { await finishConversation(session.conversationId); }
             catch { console.warn('Conversation timeout cleanup gagal; periksa dashboard Tavus.'); }
-          }, (MAX_CALL_SECONDS + 5) * 1000);
+          }, (durationSeconds + 5) * 1000);
           endTimer.unref();
           json(response, 201, session);
         } finally {
@@ -109,7 +146,7 @@ export function createNayaServer({ client = makeTavusClient(), gemini = geminiCo
         return;
       }
 
-      const file = request.method === 'GET' ? files.get(path) : undefined;
+      const file = request.method === 'GET' ? files.get(path === '/naya' || path === '/dr-paws' ? '/' : path) : undefined;
       if (!file) {
         json(response, 404, { error: 'Tidak ditemukan.' });
         return;
@@ -142,6 +179,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   createNayaServer({ client: makeTavusClient({
     gemini: { apiKey: process.env.GEMINI_API_KEY, model: gemini.model },
   }), gemini }).listen(port, '127.0.0.1', () => {
-    console.log(`Naya Milestone 4: http://127.0.0.1:${port}`);
+    console.log(`MyNaiA Milestone 5: http://127.0.0.1:${port}`);
   });
 }

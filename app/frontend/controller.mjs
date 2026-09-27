@@ -2,9 +2,10 @@ export function createConversationController({ api, render }) {
   let phase = 'ready';
   let session = null;
   let message = '';
+  let ending = false;
 
   function snapshot() {
-    return { phase, session, message, canStart: !session && phase !== 'connecting', canEnd: Boolean(session) };
+    return { phase, session, message, canStart: !session && phase !== 'connecting', canEnd: Boolean(session) && !ending };
   }
 
   function update() { render(snapshot()); }
@@ -36,14 +37,16 @@ export function createConversationController({ api, render }) {
     }
   }
 
-  async function end() {
-    if (!session) return false;
+  async function end(reason = 'manual') {
+    if (!session || ending) return false;
     const current = session;
+    ending = true;
+    update();
     try {
       await api.end(current.conversationId);
       session = null;
       phase = 'ended';
-      message = '';
+      message = reason === 'duration' ? 'Sesi selesai karena batas durasi.' : '';
       update();
       return true;
     } catch (error) {
@@ -51,6 +54,9 @@ export function createConversationController({ api, render }) {
       message = error?.message || 'Gagal mengakhiri percakapan.';
       update();
       return false;
+    } finally {
+      ending = false;
+      update();
     }
   }
 
