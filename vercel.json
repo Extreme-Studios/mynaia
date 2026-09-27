@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build",
+  "outputDirectory": "public",
+  "rewrites": [
+    { "source": "/api/health", "destination": "/api/handler?route=health" },
+    { "source": "/api/gemini/status", "destination": "/api/handler?route=gemini-status" },
+    { "source": "/api/tavus/status", "destination": "/api/handler?route=tavus-status" },
+    { "source": "/api/access/status", "destination": "/api/handler?route=access-status" },
+    { "source": "/api/access/login", "destination": "/api/handler?route=access-login" },
+    { "source": "/api/conversations", "destination": "/api/handler?route=conversations" },
+    { "source": "/api/conversations/:id/end", "destination": "/api/handler?route=end&id=:id" }
+  ]
+}

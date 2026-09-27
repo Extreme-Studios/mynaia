@@ -1,0 +1,16 @@
+{
+  "provider": "tavus",
+  "pipelineMode": "full",
+  "faceMode": "stock",
+  "faceId": "rc9cff32ceba",
+  "llmMode": "tavus-hosted",
+  "palIdEnv": "TAVUS_PAL_ID",
+  "faceIdEnv": "TAVUS_FACE_ID",
+  "apiKeyEnv": "TAVUS_API_KEY",
+  "language": "id",
+  "session": {
+    "maxDurationMinutes": 3,
+    "allowPaidOverage": false
+  },
+  "note": "Contoh rencana lokal, bukan payload API Tavus. ID dan dukungan bahasa diverifikasi saat Milestone 2."
+}

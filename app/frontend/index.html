@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#10192a">
+  <title>Mynaia — Ngobrol dengan Naya</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <main class="call-shell">
+    <header class="topbar">
+      <div class="brand"><strong>Mynaia</strong><span>Ngobrol dengan Naya</span></div>
+      <button id="debug-toggle" class="debug-toggle" type="button" aria-expanded="false" aria-controls="debug-panel">Detail</button>
+    </header>
+
+    <section class="stage" aria-label="Area percakapan video Naya">
+      <div id="placeholder" class="placeholder">
+        <div class="avatar-mark" aria-hidden="true">N</div>
+        <h1>Ngobrol dengan Naya</h1>
+        <p>Teman ngobrol lewat panggilan video. Naya adalah karakter AI.</p>
+      </div>
+      <iframe id="conversation-frame" title="Panggilan video Naya melalui Tavus" allow="camera; microphone; fullscreen; display-capture; autoplay" hidden></iframe>
+      <div id="status" class="status" role="status" aria-live="polite"><span class="status-dot"></span><span id="status-text">Ready</span></div>
+    </section>
+
+    <div id="error" class="error" role="alert" hidden></div>
+    <form id="access-form" class="access-form" hidden>
+      <label for="access-code">Kode akses</label>
+      <input id="access-code" name="code" type="password" autocomplete="off" required>
+      <button type="submit">Masuk</button>
+      <span id="access-message" role="status"></span>
+    </form>
+    <footer class="controls" aria-label="Kontrol percakapan">
+      <button id="start" class="start" type="button">Mulai Ngobrol</button>
+      <button id="end" class="end" type="button" disabled>Akhiri</button>
+    </footer>
+    <p class="hint">Izin microphone akan diminta oleh ruang panggilan Tavus setelah Anda memulai. Gunakan kontrol mic di dalam video.</p>
+    <details id="debug-panel" class="debug-panel" hidden>
+      <summary>Detail uji</summary>
+      <p id="debug-text">Memeriksa konfigurasi lokal…</p>
+      <p class="quota">Tavus free minutes are limited. Start only when ready.</p>
+    </details>
+  </main>
+</body>
+</html>
