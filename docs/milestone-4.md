@@ -1,13 +1,13 @@
 # Milestone 4 — Supabase Persistent Memory + Personalization
 
-Status (27 September 2026): project Supabase `mynaia` aktif, migrasi berhasil, tujuh tabel dan RLS telah diverifikasi, dan koneksi baca/tulis server lokal berhasil. Environment Supabase Production Vercel telah diisi; verifikasi deployment dan uji recall dua sesi masih diperlukan. **SOURCE OF TRUTH = SUPABASE**. Tavus tetap penyedia avatar/video, STT, TTS, dan lip sync. Gemini memproses transkrip setelah sesi. Vercel hanya backend aplikasi dan tidak menyimpan state permanen di filesystem.
+Status (27 September 2026): project Supabase `mynaia` aktif, migrasi berhasil, tujuh tabel dan RLS telah diverifikasi, dan koneksi baca/tulis server lokal berhasil. Environment Supabase Production Vercel terpasang dan deployment siap; endpoint memori mengembalikan `enabled: true` melalui alias Vercel dan domain khusus. Uji recall dua sesi masih diperlukan. **SOURCE OF TRUTH = SUPABASE**. Tavus tetap penyedia avatar/video, STT, TTS, dan lip sync. Gemini memproses transkrip setelah sesi. Vercel hanya backend aplikasi dan tidak menyimpan state permanen di filesystem.
 
 ## Aktivasi
 
 1. Project tujuan adalah Supabase `mynaia` (`fonhzclqymvqlqghmiwv`) di organisasi Extreme Studios, region Seoul. `supabase/migrations/001_naya_memory.sql` telah dijalankan melalui SQL Editor. Query verifikasi menemukan tepat tujuh tabel `naya_` dan `rowsecurity = true` untuk semuanya. Project PARFI tidak diubah.
 2. `SUPABASE_URL` dan `SUPABASE_SERVICE_ROLE_KEY` telah disimpan di `.env` lokal dan environment Production Vercel, tanpa masuk source control. Jangan taruh key di frontend, source control, atau chat. Uji lokal berhasil membuat/membaca `naya_primary_user` melalui Data API dengan key server.
 3. Pastikan `GEMINI_API_KEY` server-side tersedia untuk ekstraksi pasca-sesi. `GEMINI_MEMORY_MODEL` default `gemini-2.5-flash`, terpisah dari LLM percakapan Tavus-hosted.
-4. Cek `GET /api/memory/status`. `enabled: true` berarti konfigurasi server terisi dan tabel dapat dibaca. Angka pending menunjukkan sesi yang belum selesai diproses. Endpoint ini tidak mengirim isi transkrip, memori, user ID, atau key.
+4. `GET /api/memory/status` pada `mynaia.vercel.app` dan `mynaia.extremestudiosai.com` terverifikasi mengembalikan `enabled: true`, `provider: supabase`, `storeConfigured: true`, dan `pendingSessions: 0`. Angka pending menunjukkan sesi yang belum selesai diproses. Endpoint ini tidak mengirim isi transkrip, memori, user ID, atau key. Nilai nol saat ini belum membuktikan pipeline transkrip/Gemini atau recall live.
 
 Jika Supabase tidak dikonfigurasi pada deployment lain, alur panggilan lama tetap bisa dipakai dan Tavus `participant_tags` lama dikirim sebagai fallback sementara. Pada konfigurasi Production ini, backend **tidak** mengirim `participant_tags`; kontinuitas hanya memakai `naya_primary_user` di database aplikasi. Tidak ada Tavus PAL, Face, Sparrow-2, patience, interruptibility, atau LLM yang diubah.
 

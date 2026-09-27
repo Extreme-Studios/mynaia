@@ -8,7 +8,7 @@ Naya adalah prototype AI companion berbentuk percakapan video. PAL Tavus memakai
 
 Milestone 1 lulus. Milestone 2 lulus secara fungsional menurut human test pengguna. Pada awal Milestone 3, Gemini dipakai sebagai BYO LLM. PAL existing sekarang memakai Tavus-hosted `tavus-gemma-4` untuk respons percakapan; Tavus tetap menyediakan sesi realtime, STT, turn-taking, TTS, dan rendering stock Face Anna. Hasil integrasi, backup rollback Gemini, dan batas validasi ada di `docs/milestone-3.md`.
 
-Milestone 4 direvisi: **Supabase adalah sumber utama memori Naya**. Backend menyimpan arsip teks percakapan, ringkasan, profil, memori, dan open loop. Gemini memproses transkrip setelah sesi; Tavus tetap menangani video/audio realtime. Identitas single-user `naya_primary_user` independen dari PAL, Tavus key, dan perangkat. Jalankan `supabase/migrations/001_naya_memory.sql`, lalu isi `SUPABASE_URL` dan `SUPABASE_SERVICE_ROLE_KEY` hanya di server. Sampai kredensial dan migrasi tersedia, memori Supabase belum aktif; panggilan lama tetap dapat digunakan. Detail aktivasi dan uji dua sesi ada di `docs/milestone-4.md`.
+Milestone 4 direvisi: **Supabase adalah sumber utama memori Naya**. Backend menyimpan arsip teks percakapan, ringkasan, profil, memori, dan open loop. Gemini memproses transkrip setelah sesi; Tavus tetap menangani video/audio realtime. Identitas single-user `naya_primary_user` independen dari PAL, Tavus key, dan perangkat. Migrasi Supabase `mynaia` sudah diterapkan, koneksi server sudah aktif, dan `/api/memory/status` di Production mengembalikan `enabled: true`. Recall dua sesi dan ekstraksi pasca-sesi belum diuji live. Detail ada di `docs/milestone-4.md`.
 
 ## Menjalankan lokal
 
