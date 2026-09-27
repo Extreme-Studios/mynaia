@@ -1,4 +1,5 @@
 export const PRIMARY_USER_ID = 'naya_primary_user';
+const TABLES = new Set(['users','conversation_sessions','conversation_messages','memories','user_profile','open_loops','session_summaries']);
 
 export class StorageError extends Error {
   constructor(code) { super(code); this.name = 'StorageError'; this.code = code; }
@@ -15,7 +16,8 @@ export function makeSupabaseStore({ url = process.env.SUPABASE_URL, key = proces
 
   async function query(table, { method = 'GET', filters = {}, columns = '*', body, conflict } = {}) {
     if (!configured) throw new StorageError('SUPABASE_NOT_CONFIGURED');
-    const target = new URL(`/rest/v1/${table}`, origin);
+    if (!TABLES.has(table)) throw new StorageError('SUPABASE_TABLE_INVALID');
+    const target = new URL(`/rest/v1/naya_${table}`, origin);
     if (method === 'GET') target.searchParams.set('select', columns);
     if (conflict) target.searchParams.set('on_conflict', conflict);
     for (const [name, value] of Object.entries(filters)) target.searchParams.set(name, value);

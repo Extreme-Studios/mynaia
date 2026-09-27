@@ -4,7 +4,7 @@ Status: kode dan migrasi siap; koneksi Supabase dan uji dua sesi belum terverifi
 
 ## Aktivasi
 
-1. Buat project Supabase milik Naya. Jalankan `supabase/migrations/001_naya_memory.sql` sekali melalui SQL Editor project tersebut.
+1. Pilih project Supabase tujuan. Organisasi yang terbuka saat ini sudah mencapai batas dua project gratis; jangan jalankan migrasi di project PARFI sebelum pemilik menentukan project tujuan. Jalankan `supabase/migrations/001_naya_memory.sql` sekali melalui SQL Editor project pilihan. Semua tujuh tabel memakai awalan `naya_` agar terpisah dari tabel aplikasi lain.
 2. Isi `SUPABASE_URL` dan `SUPABASE_SERVICE_ROLE_KEY` di `.env` lokal dan environment server Vercel. Jangan taruh key di browser, source control, atau chat. Saat ini kedua nilai belum tersedia di project lokal, jadi koneksi nyata belum dapat dinyatakan berhasil.
 3. Pastikan `GEMINI_API_KEY` server-side tersedia untuk ekstraksi pasca-sesi. `GEMINI_MEMORY_MODEL` default `gemini-2.5-flash`, terpisah dari LLM percakapan Tavus-hosted.
 4. Cek `GET /api/memory/status`. `enabled: true` berarti konfigurasi server terisi dan tabel dapat dibaca. Angka pending menunjukkan sesi yang belum selesai diproses. Endpoint ini tidak mengirim isi transkrip, memori, user ID, atau key.
@@ -36,3 +36,4 @@ Jangan buat conversation otomatis untuk pengujian. Setelah Supabase dan migrasi 
 Tes mock lokal tidak membuat Tavus conversation dan tidak memakai menit Tavus. Hasil live hanya boleh disebut PASSED setelah seluruh alur Supabase dan recall dua sesi diverifikasi.
 
 Referensi resmi: [Tavus Get Conversation](https://docs.tavus.io/api-reference/conversations/get-conversation), [Tavus Create Conversation](https://docs.tavus.io/api-reference/conversations/create-conversation), [Gemini structured output](https://ai.google.dev/gemini-api/docs/structured-output), [Supabase API keys](https://supabase.com/docs/guides/api/api-keys).
+

@@ -47,7 +47,7 @@ test('Supabase config server-only dan error body tidak bocor', async () => {
     fetchImpl: async (url, options) => { requests.push({ url: String(url), options }); return Response.json({ message: 'private-test-key' }, { status: 401 }); } });
   await assert.rejects(db.select('users'), (error) => error.code === 'SUPABASE_HTTP_401' && !error.message.includes('private-test-key'));
   assert.equal(requests[0].options.headers.apikey, 'private-test-key');
-  assert.match(requests[0].url, /\/rest\/v1\/users/);
+  assert.match(requests[0].url, /\/rest\/v1\/naya_users/);
 });
 
 test('transcript final ditarik dari event resmi, timestamp tetap, rahasia disamarkan', () => {
