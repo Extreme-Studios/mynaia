@@ -100,7 +100,7 @@ export function createVercelHandler({ env = process.env, client } = {}) {
           json(response, 401, { error: 'Masukkan kode akses dulu.', code: 'ACCESS_REQUIRED' });
           return;
         }
-        if (!tavus.configured || !env.TAVUS_PAL_ID?.trim() || !gemini.configured) {
+        if (!tavus.configured || !env.TAVUS_PAL_ID?.trim()) {
           throw new TavusError('CONFIG_REQUIRED', 'Konfigurasi Naya di server belum lengkap.', 503);
         }
         if (route === 'conversations') {

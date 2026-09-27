@@ -55,3 +55,18 @@ test('PAL Gemini dibuat sekali dengan Face lama, state dan log tanpa key', async
     assert.doesNotMatch(state + logs.join(' '), /gemini-private|tavus-private/);
   } finally { console.log = oldLog; await rm(dir, { recursive: true, force: true }); }
 });
+
+test('PAL existing Tavus-hosted diterima tanpa membuat PAL atau conversation baru', async () => {
+  const calls = [];
+  const client = makeTavusClient({
+    apiKey: 'tavus-private', envPalId: 'p-existing',
+    gemini: { apiKey: 'gemini-private', model: 'gemini-3.8-flash' },
+    fetchImpl: async (url, options) => {
+      calls.push({ url, method: options.method });
+      return Response.json({ pal_id: 'p-existing', pal_name: 'Naya Gemini', pipeline_mode: 'full',
+        default_face_id: FACE_ID, layers: { conversational_flow: { turn_detection_model: 'sparrow-2' } } });
+    },
+  });
+  assert.equal(await client.getOrCreateNayaPal(), 'p-existing');
+  assert.deepEqual(calls, [{ url: 'https://tavusapi.com/v2/pals/p-existing', method: 'GET' }]);
+});

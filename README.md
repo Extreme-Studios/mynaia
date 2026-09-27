@@ -6,7 +6,7 @@ Naya adalah prototype AI companion berbentuk percakapan video. PAL Tavus memakai
 
 ## Status
 
-Milestone 1 lulus. Milestone 2 lulus secara fungsional menurut human test pengguna. Pada Milestone 3, Gemini menjadi LLM Naya melalui konfigurasi BYO LLM Tavus; Tavus tetap menyediakan sesi realtime, STT, turn-taking, TTS, dan rendering stock Face Anna. Hasil integrasi dan batas validasi ada di `docs/milestone-3.md`.
+Milestone 1 lulus. Milestone 2 lulus secara fungsional menurut human test pengguna. Pada awal Milestone 3, Gemini dipakai sebagai BYO LLM. PAL existing sekarang memakai Tavus-hosted `tavus-gemma-4` untuk respons percakapan; Tavus tetap menyediakan sesi realtime, STT, turn-taking, TTS, dan rendering stock Face Anna. Hasil integrasi, backup rollback Gemini, dan batas validasi ada di `docs/milestone-3.md`.
 
 ## Menjalankan lokal
 
@@ -23,7 +23,7 @@ Buka `http://localhost:3000`. Server hanya mendengarkan pada `127.0.0.1`. Port t
 
 Salin `.env.example` menjadi `.env` di root proyek lalu isi `TAVUS_API_KEY` dan `GEMINI_API_KEY` secara lokal, atau set environment variable pada proses server. `GEMINI_MODEL` default `gemini-3.8-flash`. Jangan kirim kunci lewat chat atau commit. `.env` diabaikan Git. GET `/api/gemini/status` hanya mengembalikan status konfigurasi dan model. Tes teks Gemini dapat dijalankan sebelum memakai menit Tavus dengan `node --use-system-ca --input-type=module -e "import {testGeminiCompletion} from './app/backend/gemini.mjs'; console.log(await testGeminiCompletion())"`.
 
-`TAVUS_PAL_ID` diarahkan ke PAL `Naya Gemini` yang telah dibuat satu kali. State cadangan disimpan di `app/backend/.naya-gemini-pal.json` dan diabaikan Git. PAL lama Milestone 2 tetap ada. Backend memverifikasi model dan base URL sebelum membuat conversation. Kunci tidak dikirim ke frontend. Kunci Gemini hanya diserahkan server ke konfigurasi BYO LLM Tavus sesuai kebutuhan integrasi.
+`TAVUS_PAL_ID` tetap diarahkan ke PAL existing `p54bfaf633c5`. Nama historis PAL dan state lokal `app/backend/.naya-gemini-pal.json` tidak mengubah model aktif. PAL lama Milestone 2 tetap ada. Backend menerima model hosted Tavus maupun Gemini BYO lama untuk rollback. Kunci tidak dikirim ke frontend; `GEMINI_API_KEY` tetap tersimpan untuk pekerjaan backend mendatang dan tidak dipakai oleh layer LLM hosted.
 
 Setelah konfigurasi, buka halaman lokal, cek detail status, lalu tekan **Mulai Ngobrol** satu kali. Backend membuat conversation maksimum 180 detik dan menampilkan ruang resmi di iframe. Tavus/Daily UI di dalam iframe mengelola izin microphone; gunakan kontrol mic di ruang video. Tekan **Akhiri** untuk menutup sesi melalui backend. Jika browser menolak izin, periksa izin situs dan muat ulang; jangan menekan Start berulang kali saat sesi masih aktif. Browser production memerlukan HTTPS; localhost dapat dipakai untuk pengembangan.
 
@@ -45,6 +45,6 @@ Frontend host mengetahui saat iframe termuat, tetapi belum memiliki event media 
 
 ## Deployment Mynaia
 
-Repo GitHub private: `Extreme-Studios/mynaia`. Vercel project: `mynaia`; alias Vercel: `https://mynaia.vercel.app`. Domain khusus: `mynaia.extremestudiosai.com` melalui CNAME Domainesia. `npm run build` menyalin frontend ke `public/` saat build; API Vercel ada di `api/handler.js`. Environment production memerlukan `TAVUS_API_KEY`, `TAVUS_PAL_ID`, `GEMINI_API_KEY`, dan `GEMINI_MODEL`. `NAYA_ACCESS_CODE` opsional: bila diisi, pengunjung harus memasukkannya sebelum tombol panggilan bisa membuat sesi Tavus. Kode dan API key hanya tersimpan di environment Vercel; `.env`, state PAL lokal, dan `.vercel` tidak dikirim ke GitHub. Vercel tidak membuat PAL otomatis bila ID tidak dikonfigurasi.
+Repo GitHub private: `Extreme-Studios/mynaia`. Vercel project: `mynaia`; alias Vercel: `https://mynaia.vercel.app`. Domain khusus: `mynaia.extremestudiosai.com` melalui CNAME Domainesia. `npm run build` menyalin frontend ke `public/` saat build; API Vercel ada di `api/handler.js`. Sesi hosted memerlukan `TAVUS_API_KEY` dan `TAVUS_PAL_ID`; `GEMINI_API_KEY`/`GEMINI_MODEL` tetap disimpan untuk pekerjaan backend dan rollback. `NAYA_ACCESS_CODE` opsional: bila diisi, pengunjung harus memasukkannya sebelum tombol panggilan bisa membuat sesi Tavus. Kode dan API key hanya tersimpan di environment Vercel; `.env`, state PAL lokal, backup rollback, dan `.vercel` tidak dikirim ke GitHub. Vercel tidak membuat PAL otomatis bila ID tidak dikonfigurasi.
 
 Fungsi Vercel tidak menyimpan state sesi di memori. Tavus membatasi conversation sampai 180 detik dan tombol **Akhiri** memanggil endpoint Tavus. Jangan mengandalkan frontend sebagai bukti status perangkat atau kualitas percakapan. Bila situs dibuka publik tanpa kode akses, setiap pengunjung dapat memakai menit Tavus.

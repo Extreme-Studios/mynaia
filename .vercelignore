@@ -4,6 +4,7 @@ app/backend/.naya-pal.json
 app/backend/.naya-pal.json.*.tmp
 app/backend/.naya-gemini-pal.json
 app/backend/.naya-gemini-pal.json.*.tmp
+app/backend/.naya-fast-llm-backup-*.json
 .git/
 node_modules/
 .vercel/

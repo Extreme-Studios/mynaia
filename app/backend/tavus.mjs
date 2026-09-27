@@ -109,6 +109,7 @@ export function makeTavusClient({
       greeting: 'Hai, aku Naya. Senang kamu mampir.',
       dynamic_greeting: false,
       layers: {
+        stt: { stt_engine: 'tavus-auto' },
         ...(usingGemini ? { llm: {
           model: gemini.model || DEFAULT_GEMINI_MODEL,
           base_url: GEMINI_BASE_URL,
@@ -118,7 +119,7 @@ export function makeTavusClient({
         } } : {}),
         conversational_flow: {
           turn_detection_model: 'sparrow-2',
-          turn_taking_patience: 'high',
+          turn_taking_patience: 'low',
           pal_interruptibility: 'medium',
           idle_engagement: 'off',
         },
@@ -158,9 +159,13 @@ export function makeTavusClient({
       if (data.default_face_id && data.default_face_id !== FACE_ID) {
         throw new TavusError('INVALID_PAL', 'PAL yang dikonfigurasi tidak memakai stock Face Anna.', 409);
       }
-      if (usingGemini && (data.layers?.llm?.model !== (gemini.model || DEFAULT_GEMINI_MODEL) ||
-        data.layers?.llm?.base_url?.replace(/\/$/, '') !== GEMINI_BASE_URL.replace(/\/$/, ''))) {
-        throw new TavusError('INVALID_GEMINI_PAL', 'PAL yang dikonfigurasi tidak menggunakan Gemini BYO LLM.', 409);
+      const llm = data.layers?.llm;
+      // Tavus omits the hosted default LLM layer from GET PAL responses.
+      const hosted = (!llm?.model || llm.model === 'tavus-gemma-4') && !llm?.base_url && !llm?.api_key;
+      const geminiByo = usingGemini && llm?.model === (gemini.model || DEFAULT_GEMINI_MODEL) &&
+        llm.base_url?.replace(/\/$/, '') === GEMINI_BASE_URL.replace(/\/$/, '');
+      if (usingGemini && !hosted && !geminiByo) {
+        throw new TavusError('INVALID_LLM_PAL', 'PAL Naya tidak memakai konfigurasi LLM yang didukung.', 409);
       }
       console.log('Tavus PAL ready');
       return existingId;

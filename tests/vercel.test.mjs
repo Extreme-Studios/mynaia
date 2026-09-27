@@ -58,3 +58,17 @@ test('Vercel tidak membuat PAL atau sesi bila konfigurasi kurang', async () => {
   assert.equal(response.status, 503);
   assert.equal(creates, 0);
 });
+
+test('Vercel hosted LLM tidak membutuhkan Gemini key untuk conversation mock', async () => {
+  let creates = 0;
+  const handler = createVercelHandler({
+    env: { TAVUS_API_KEY: 'key', TAVUS_PAL_ID: 'p-existing' },
+    client: { configured: true, createConversation: async () => {
+      creates++;
+      return { conversationId: 'c12345', conversationUrl: 'https://tavus.daily.co/c12345', status: 'active' };
+    } },
+  });
+  const response = await invoke(handler, 'POST', '/api/handler?route=conversations');
+  assert.equal(response.status, 201);
+  assert.equal(creates, 1);
+});
