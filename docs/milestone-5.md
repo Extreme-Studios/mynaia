@@ -10,6 +10,8 @@ Admin Settings memakai `MYNAIA_ADMIN_SECRET` tersimpan hanya di `.env` lokal yan
 
 Variabel environment per profil mengikuti `TAVUS_PROFILE_<1..8>_{API_KEY,NAYA_PAL_ID,NAYA_FACE_ID,DR_PAWS_PAL_ID,DR_PAWS_FACE_ID}`. Fallback variabel Tavus lama untuk profil 1 hanya berlaku bila key profil 1 belum diisi. Profil 2–8 tidak mengambil PAL dari profil 1. Source dan bundle frontend tidak boleh memuat secret. Uji mock tidak membuat conversation Tavus nyata.
 
+Validasi patch: `npm run check`, 42/42 test mock, `npm run build`, `git diff --check`, dan audit nilai/nama secret pada aset frontend lulus. GitHub `main` dan Vercel Production diperbarui; domain khusus, health, status mode, dan admin status merespons. Login admin produksi dan inspeksi read-only profil 1 berhasil; semua PAL/Face profil 1 dapat diakses. Profil aktif masih 1. Browser menampilkan Admin Settings dan form login tanpa console error yang teramati. Tidak ada live session dijalankan.
+
 Status: implementation ready; human UI/live validation is still required. No Tavus conversation was created while implementing this milestone. Production remains one MyNaiA app at `https://mynaia.extremestudiosai.com`.
 
 ## Product and modes
