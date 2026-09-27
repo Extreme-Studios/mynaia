@@ -12,7 +12,7 @@ export function buildMemoryContext({ profile = [], memories = [], summaries = []
   if (p?.preferred_language) lines.push(`Bahasa: ${p.preferred_language}`);
   if (p?.interaction_style) lines.push(`Gaya: ${p.interaction_style}`);
   if (loops.length) lines.push(`Hal yang mungkin layak ditindaklanjuti: ${loops.slice(0, 3).map((x) => x.content).join('; ')}`);
-  if (memories.length) lines.push(`Fakta relevan: ${memories.slice(0, 12).map((x) => x.content).join('; ')}`);
+  if (memories.length) lines.push(`Fakta relevan: ${memories.slice(0, 12).map((x) => `${x.category}: ${x.content}`).join('; ')}`);
   if (summaries.length) lines.push(`Percakapan terakhir: ${summaries.slice(0, 3).map((x) => x.summary).join(' | ')}`);
   lines.push('Sapa bervariasi. Bila ada hal tertunda yang relevan, tanyakan secara natural; jika tidak, gunakan konteks akrab atau sapaan netral. Jangan buka dengan daftar fakta.');
   return redactSensitive(lines.join('\n')).slice(0, 5000);
@@ -33,7 +33,7 @@ export function makeMemoryService({ store, tavus, extract = extractWithGemini, u
     await processPending(2);
     const [profile, memories, summaries, loops] = await Promise.all([
       store.select('user_profile', { user_id: eq(userId) }, 'display_name,preferred_language,interaction_style'),
-      store.select('memories', { user_id: eq(userId), active: 'eq.true', order: 'importance.desc,last_seen_at.desc', limit: '12' }, 'content,importance,last_seen_at'),
+      store.select('memories', { user_id: eq(userId), active: 'eq.true', order: 'importance.desc,last_seen_at.desc', limit: '12' }, 'category,content,importance,last_seen_at'),
       store.select('session_summaries', { user_id: eq(userId), order: 'created_at.desc', limit: '3' }, 'summary'),
       store.select('open_loops', { user_id: eq(userId), status: 'eq.open', order: 'created_at.desc', limit: '3' }, 'content'),
     ]);
