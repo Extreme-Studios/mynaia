@@ -9,7 +9,13 @@ Status (27 September 2026): project Supabase `mynaia` aktif, migrasi berhasil, t
 3. Pastikan `GEMINI_API_KEY` server-side tersedia untuk ekstraksi pasca-sesi. `GEMINI_MEMORY_MODEL` default `gemini-2.5-flash`, terpisah dari LLM percakapan Tavus-hosted.
 4. `GET /api/memory/status` pada `mynaia.vercel.app` dan `mynaia.extremestudiosai.com` terverifikasi mengembalikan `enabled: true`, `provider: supabase`, `storeConfigured: true`, dan `pendingSessions: 0`. Angka pending menunjukkan sesi yang belum selesai diproses. Endpoint ini tidak mengirim isi transkrip, memori, user ID, atau key. Nilai nol saat ini belum membuktikan pipeline transkrip/Gemini atau recall live.
 
-Jika Supabase tidak dikonfigurasi pada deployment lain, alur panggilan lama tetap bisa dipakai dan Tavus `participant_tags` lama dikirim sebagai fallback sementara. Pada konfigurasi Production ini, backend **tidak** mengirim `participant_tags`; kontinuitas hanya memakai `naya_primary_user` di database aplikasi. Tidak ada Tavus PAL, Face, Sparrow-2, patience, interruptibility, atau LLM yang diubah.
+## Keputusan sumber memori
+
+**PERSISTENT MEMORY PROVIDER = SUPABASE. TAVUS MEMORY = DISABLED.** Setiap create conversation tidak mengirim `participant_tags`, `memory_stores`, atau field lain untuk memori lintas sesi Tavus. Tidak ada Tavus memory lookup, learning, pinned memory, status, atau debug endpoint di aplikasi. `NAYA_MEMORY_STORE` dan pembuat tag lama sudah dihapus. Jika Supabase belum siap, backend menolak pembuatan sesi sebelum memanggil Tavus, sehingga tidak beralih ke memori Tavus. `/api/memory/status` selalu menyebut provider `supabase` dan melaporkan `enabled: false` ketika database belum dikonfigurasi.
+
+Memory store Tavus yang mungkin dibuat oleh versi lama dianggap **orphaned/unused**. Aplikasi Naya tidak lagi membaca atau menulisnya; data akun Tavus tidak dihapus otomatis. Menurut [dokumentasi create conversation Tavus](https://docs.tavus.io/api-reference/conversations/create-conversation), menghilangkan `participant_tags` membuat sesi stateless untuk memori lintas conversation. Tidak ada Tavus PAL, Face, Sparrow-2, patience, interruptibility, atau LLM yang diubah.
+
+Validasi cleanup: audit runtime menemukan 0 referensi Tavus memory API/tag/store. `npm run check`, `npm test` (31/31 mock tests), dan `npm run build` lulus tanpa membuat sesi nyata. Tes mencakup payload stateless, context Supabase, retrieval transkrip, identitas yang tetap saat PAL/key Tavus berubah, gagal tertutup ketika Supabase tidak siap, dan respons tanpa key. Recall lintas sesi tetap menunggu tes manusia.
 
 ## Alur data
 

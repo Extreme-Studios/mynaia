@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { createNayaServer } from '../app/backend/server.mjs';
 
-async function withServer(client, run) {
-  const server = createNayaServer({ client, gemini: { configured: true, model: 'gemini-3.8-flash' } });
+async function withServer(client, run, memory) {
+  const server = createNayaServer({ client, gemini: { configured: true, model: 'gemini-3.8-flash' }, ...(memory ? { memory } : {}) });
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -62,5 +62,5 @@ test('response mapping, double start guard, end dan no secret leakage', async ()
     assert.equal(active.conversationActive, true);
     const ended = await fetch(`${base}/api/conversations/c12345/end`, { method: 'POST' });
     assert.equal(ended.status, 200);
-  });
+  }, { prepareContext: async () => 'Konteks Supabase', recordStarted: async () => {}, recordEnded: async () => {} });
 });

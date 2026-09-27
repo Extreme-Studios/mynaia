@@ -50,10 +50,19 @@ test('Supabase config server-only dan error body tidak bocor', async () => {
   assert.match(requests[0].url, /\/rest\/v1\/naya_users/);
 });
 
+test('tanpa Supabase, persiapan context gagal sebelum Tavus membuat sesi', async () => {
+  let tavusCalls = 0;
+  const store = makeSupabaseStore({ url: '', key: '' });
+  const memory = makeMemoryService({ store, tavus: { getConversation: async () => { tavusCalls++; } } });
+  await assert.rejects(memory.prepareContext(), (error) => error.code === 'SUPABASE_NOT_CONFIGURED');
+  assert.equal(tavusCalls, 0);
+  assert.deepEqual(await memory.status(), { enabled: false, provider: 'supabase', storeConfigured: false, pendingSessions: 0 });
+});
+
 test('transcript final ditarik dari event resmi, timestamp tetap, rahasia disamarkan', () => {
   assert.equal(parseTranscript({ events: [] }), null);
   const messages = parseTranscript({ events: [{ event_type: 'application.transcription_ready', properties: { transcript: [
-    { role: 'user', content: 'API key: 3f6bea1814934179ab234c80863f09f1', timestamp: 1750000000.5, seconds_from_start: 2.1, duration: 1.2 },
+    { role: 'user', content: 'API key: 0123456789abcdef0123456789abcdef', timestamp: 1750000000.5, seconds_from_start: 2.1, duration: 1.2 },
     { role: 'assistant', content: 'Halo', timestamp: 1750000002, seconds_from_start: 4 },
   ] } }] });
   assert.equal(messages.length, 2);
@@ -101,8 +110,9 @@ test('arsip idempoten, dedup memori, kontradiksi, profile, open loop, dan contex
     : validateExtraction({ summary: 'Adi suka kopi susu dan besok meeting.', tone: 'santai', topics: ['kopi','meeting'], follow_ups: ['Tanya hasil meeting'],
       memories: [{ category: 'PREFERENCE', content: 'Adi suka kopi susu', normalized_key: 'preference:coffee', importance: .7, confidence: .8 }],
       open_loops: [{ content: 'Tanyakan hasil meeting', normalized_key: 'meeting' }], resolved_open_loop_keys: [], profile: { display_name: 'Adi' } });
-  const tavus = { getConversation: async (id) => responses.get(id) };
-  const first = makeMemoryService({ store, tavus, extract, palId: 'p-old', faceId: FACE_ID });
+  const oldTavus = { apiKey: 'old-test-key', getConversation: async (id) => responses.get(id) };
+  const newTavus = { apiKey: 'new-test-key', getConversation: async (id) => responses.get(id) };
+  const first = makeMemoryService({ store, tavus: oldTavus, extract, palId: 'p-old', faceId: FACE_ID });
   await first.prepareContext();
   await first.recordStarted('c-one');
   assert.equal((await first.recordEnded('c-one')).status, 'ready');
@@ -110,7 +120,7 @@ test('arsip idempoten, dedup memori, kontradiksi, profile, open loop, dan contex
   assert.equal(store.tables.conversation_messages.length, 2);
   assert.equal(store.tables.memories.length, 1);
   assert.equal(store.tables.open_loops[0].status, 'open');
-  const second = makeMemoryService({ store, tavus, extract, palId: 'p-new', faceId: 'r-new' });
+  const second = makeMemoryService({ store, tavus: newTavus, extract, palId: 'p-new', faceId: 'r-new' });
   const before = await second.prepareContext();
   assert.match(before, /kopi susu/);
   assert.match(before, /meeting/);
@@ -123,6 +133,7 @@ test('arsip idempoten, dedup memori, kontradiksi, profile, open loop, dan contex
   assert.equal(store.tables.user_profile[0].display_name, 'Adi');
   assert.equal(store.tables.conversation_sessions[0].user_id, PRIMARY_USER_ID);
   assert.equal(store.tables.conversation_sessions[1].user_id, PRIMARY_USER_ID);
+  assert.doesNotMatch(JSON.stringify(store.tables), /old-test-key|new-test-key/);
   assert.equal(store.tables.session_summaries.length, 2);
   assert.equal((await second.status()).pendingSessions, 0);
 });
@@ -130,10 +141,10 @@ test('arsip idempoten, dedup memori, kontradiksi, profile, open loop, dan contex
 test('context ringkas dibatasi dan tidak berisi secret', () => {
   const context = buildMemoryContext({ memories: Array.from({ length: 100 }, () => ({ content: 'Preferensi yang panjang '.repeat(100) })) });
   assert.ok(context.length <= 5000);
-  assert.doesNotMatch(context, /3f6bea1814934179ab234c80863f09f1/);
+  assert.doesNotMatch(context, /0123456789abcdef0123456789abcdef/);
 });
 
-test('Supabase mode tidak mengirim participant_tags Tavus dan PAL latency tidak diubah', async () => {
+test('context Supabase masuk ke conversation stateless dan PAL latency tidak diubah', async () => {
   const bodies = [];
   const client = makeTavusClient({ apiKey: 'dummy', envPalId: 'p-existing', fetchImpl: async (url, options) => {
     if (url.includes('/v2/pals/')) return Response.json({ pal_id: 'p-existing', pal_name: 'Naya', default_face_id: FACE_ID,
@@ -141,8 +152,9 @@ test('Supabase mode tidak mengirim participant_tags Tavus dan PAL latency tidak 
     bodies.push(JSON.parse(options.body));
     return Response.json({ conversation_id: 'c12345', conversation_url: 'https://tavus.daily.co/c12345', status: 'active' });
   } });
-  await client.createConversation({ conversationalContext: 'Adi suka kopi susu', disableTavusMemory: true });
-  assert.equal(bodies[0].participant_tags, undefined);
+  await client.createConversation({ conversationalContext: 'Adi suka kopi susu' });
+  assert.equal(Object.hasOwn(bodies[0], 'participant_tags'), false);
+  assert.equal(Object.hasOwn(bodies[0], 'memory_stores'), false);
   assert.match(bodies[0].conversational_context, /Adi suka kopi susu/);
   assert.deepEqual(bodies[0].properties.languages, ['id']);
   assert.equal(bodies[0].face_id, FACE_ID);

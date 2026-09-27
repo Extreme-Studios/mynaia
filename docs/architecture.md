@@ -14,7 +14,7 @@ Browser (UI, izin mic, media, kontrol)
        └─ Tavus CVI (PAL + Face, STT, TTS, lip sync, video, LLM hosted)
 ```
 
-Backend menyimpan kunci Tavus, Gemini, dan Supabase di server, membuat sesi, mengembalikan URL sesi terbatas ke browser, dan mengakhiri sesi lewat API. Browser tidak menerima API key. PAL memuat persona Naya; Face menentukan tampilan avatar. LLM percakapan aktif adalah Tavus-hosted `tavus-gemma-4`; Gemini BYO tetap opsi rollback, sedangkan Gemini `generateContent` dipakai terpisah setelah sesi untuk memproses memori. Backend memuat context ringkas dari Supabase sebelum membuat sesi Tavus. Ketika Supabase aktif, `participant_tags` Tavus tidak dikirim dan identitas Naya tidak bergantung pada PAL atau Tavus API key.
+Backend menyimpan kunci Tavus, Gemini, dan Supabase di server, membuat sesi, mengembalikan URL sesi terbatas ke browser, dan mengakhiri sesi lewat API. Browser tidak menerima API key. PAL memuat persona Naya; Face menentukan tampilan avatar. LLM percakapan aktif adalah Tavus-hosted `tavus-gemma-4`; Gemini BYO tetap opsi rollback, sedangkan Gemini `generateContent` dipakai terpisah setelah sesi untuk memproses memori. Backend memuat context ringkas dari Supabase sebelum membuat sesi Tavus. `participant_tags` dan `memory_stores` Tavus tidak pernah dikirim; identitas Naya tidak bergantung pada PAL atau Tavus API key.
 
 ## Wireframe layar
 
@@ -45,9 +45,9 @@ Tavus menangani konteks selama panggilan. Setelah selesai, backend mengambil `ap
 
 ### Persistent memory
 
-Supabase adalah sumber memori permanen. `users.id = naya_primary_user` untuk prototype single-user. Gemini membuat ringkasan, fakta terpilih, profil, dan open loop dari transkrip. Backend mengambil beberapa entri penting/terbaru dan menyusun `conversational_context` maksimum 5.000 karakter sebelum panggilan berikutnya. Identitas tidak berasal dari Tavus key, PAL, Face, IP, browser, atau perangkat. Kategori dan batas privasi ada di `docs/milestone-4.md`.
+**PERSISTENT MEMORY PROVIDER = SUPABASE. TAVUS MEMORY = DISABLED.** `users.id = naya_primary_user` untuk prototype single-user. Sebelum sesi, backend mengambil beberapa entri penting/terbaru dan menyusun `conversational_context` maksimum 5.000 karakter. Selama sesi Tavus hanya menangani percakapan realtime. Sesudah sesi, backend mengambil transkrip Tavus lalu menyimpannya di Supabase; Gemini membuat ringkasan, fakta terpilih, profil, dan open loop untuk Supabase. Identitas tidak berasal dari Tavus key, PAL, Face, IP, browser, atau perangkat. Kategori dan batas privasi ada di `docs/milestone-4.md`.
 
-Skema ada di `supabase/migrations/001_naya_memory.sql`: tujuh tabel berawalan `naya_` dengan RLS tanpa policy browser. Vercel tidak dipakai untuk file/state permanen. Untuk multi-user di masa depan, login harus memetakan tiap user ke ID berbeda. Endpoint `/api/memory/status` hanya mengungkap status/jumlah pending; `/api/memory/sync` tersedia untuk sinkronisasi tertunda dan dibatasi gerbang akses di Vercel. Bila Supabase belum dikonfigurasi, panggilan lama tetap berjalan dengan Tavus memory sementara dan endpoint status menunjukkan disabled.
+Skema ada di `supabase/migrations/001_naya_memory.sql`: tujuh tabel berawalan `naya_` dengan RLS tanpa policy browser. Vercel tidak dipakai untuk file/state permanen. Untuk multi-user di masa depan, login harus memetakan tiap user ke ID berbeda. Endpoint `/api/memory/status` hanya mengungkap status/jumlah pending dengan provider `supabase`; `/api/memory/sync` tersedia untuk sinkronisasi tertunda dan dibatasi gerbang akses di Vercel. Bila Supabase belum dikonfigurasi, create conversation ditolak sebelum memanggil Tavus. Memory store Tavus lama, bila ada, orphaned/unused dan tidak dihapus otomatis.
 
 ## Privasi dan keamanan awal
 

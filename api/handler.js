@@ -1,7 +1,6 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { makeTavusClient, TavusError } from '../app/backend/tavus.mjs';
 import { geminiConfig } from '../app/backend/gemini.mjs';
-import { memoryStoreTag } from '../app/backend/memory.mjs';
 import { makeSupabaseStore, StorageError } from '../app/backend/supabase.mjs';
 import { makeMemoryService } from '../app/backend/memory-service.mjs';
 
@@ -61,7 +60,6 @@ export function createVercelHandler({ env = process.env, client, memory } = {}) 
     apiKey: env.TAVUS_API_KEY,
     envPalId: env.TAVUS_PAL_ID,
     gemini: { apiKey: env.GEMINI_API_KEY, model: gemini.model },
-    memoryStore: memoryStoreTag(env),
   });
   const accessCode = env.NAYA_ACCESS_CODE?.trim() || '';
   const store = makeSupabaseStore({ url: env.SUPABASE_URL, key: env.SUPABASE_SERVICE_ROLE_KEY });
@@ -119,7 +117,7 @@ export function createVercelHandler({ env = process.env, client, memory } = {}) 
         }
         if (route === 'conversations') {
           const context = await memoryService.prepareContext();
-          const session = await tavus.createConversation({ conversationalContext: context, disableTavusMemory: store.configured });
+          const session = await tavus.createConversation({ conversationalContext: context });
           try { await memoryService.recordStarted(session.conversationId); }
           catch (error) {
             try { await tavus.endConversation(session.conversationId); } catch { /* Avoid an orphaned paid session if storage fails. */ }

@@ -83,7 +83,7 @@ export function createNayaServer({ client = makeTavusClient(), gemini = geminiCo
         creating = true;
         try {
           const context = await memory.prepareContext();
-          const session = await client.createConversation({ conversationalContext: context, disableTavusMemory: Boolean(memory.enabled) });
+          const session = await client.createConversation({ conversationalContext: context });
           try { await memory.recordStarted(session.conversationId); }
           catch (error) {
             try { await client.endConversation(session.conversationId); } catch { /* Prevent an orphaned call. */ }

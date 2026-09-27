@@ -26,6 +26,7 @@ test('Vercel gate menolak sesi tanpa kode, lalu mengizinkan setelah login', asyn
       createConversation: async () => { creates++; return { conversationId: 'c12345', conversationUrl: 'https://tavus.daily.co/c12345', status: 'active' }; },
       endConversation: async () => { ends++; },
     },
+    memory: { prepareContext: async () => '', recordStarted: async () => {}, recordEnded: async () => {} },
   });
   const status = await invoke(handler, 'GET', '/api/handler?route=access-status');
   assert.deepEqual(status.body, { required: true, authorized: false });
@@ -67,14 +68,28 @@ test('Vercel hosted LLM tidak membutuhkan Gemini key untuk conversation mock', a
       creates++;
       return { conversationId: 'c12345', conversationUrl: 'https://tavus.daily.co/c12345', status: 'active' };
     } },
+    memory: { prepareContext: async () => '', recordStarted: async () => {} },
   });
   const response = await invoke(handler, 'POST', '/api/handler?route=conversations');
   assert.equal(response.status, 201);
   assert.equal(creates, 1);
 });
 
-test('Vercel memory status tidak mengekspos tag atau credential', async () => {
-  const handler = createVercelHandler({ env: { NAYA_MEMORY_STORE: 'naya_user_private', TAVUS_API_KEY: 'secret', TAVUS_PAL_ID: 'p-existing' },
+test('Vercel menolak create sebelum Tavus bila Supabase tidak terkonfigurasi', async () => {
+  let creates = 0;
+  const handler = createVercelHandler({
+    env: { TAVUS_API_KEY: 'private-test-key', TAVUS_PAL_ID: 'p-existing' },
+    client: { configured: true, createConversation: async () => { creates++; } },
+  });
+  const response = await invoke(handler, 'POST', '/api/handler?route=conversations');
+  assert.equal(response.status, 503);
+  assert.equal(response.body.code, 'SUPABASE_NOT_CONFIGURED');
+  assert.equal(creates, 0);
+  assert.doesNotMatch(JSON.stringify(response.body), /private-test-key/);
+});
+
+test('Vercel memory status hanya melaporkan Supabase tanpa credential', async () => {
+  const handler = createVercelHandler({ env: { TAVUS_API_KEY: 'secret', TAVUS_PAL_ID: 'p-existing' },
     client: { configured: true } });
   const response = await invoke(handler, 'GET', '/api/handler?route=memory-status');
   assert.deepEqual(response.body, { enabled: false, provider: 'supabase', storeConfigured: false, pendingSessions: 0 });
@@ -99,7 +114,7 @@ test('Vercel menyuntik context Supabase, merekam sesi, dan melindungi sync', asy
   const cookie = login.headers['set-cookie'].split(';')[0];
   const created = await invoke(handler, 'POST', '/api/handler?route=conversations', { cookie });
   assert.equal(created.status, 201);
-  assert.deepEqual(calls[0][1], { conversationalContext: 'Adi suka kopi susu', disableTavusMemory: true });
+  assert.deepEqual(calls[0][1], { conversationalContext: 'Adi suka kopi susu' });
   assert.deepEqual(calls[1], ['started', 'c12345']);
   await invoke(handler, 'POST', '/api/handler?route=end&id=c12345', { cookie });
   assert.deepEqual(calls.at(-1), ['ended', 'c12345']);

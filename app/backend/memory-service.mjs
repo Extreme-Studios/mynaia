@@ -1,4 +1,4 @@
-import { PRIMARY_USER_ID } from './supabase.mjs';
+import { PRIMARY_USER_ID, StorageError } from './supabase.mjs';
 import { parseTranscript, redactSensitive } from './transcript.mjs';
 import { extractWithGemini } from './memory-extract.mjs';
 
@@ -28,7 +28,7 @@ export function makeMemoryService({ store, tavus, extract = extractWithGemini, u
   }
 
   async function prepareContext() {
-    if (!store.configured) return '';
+    if (!store.configured) throw new StorageError('SUPABASE_NOT_CONFIGURED');
     await store.upsert('users', { id: userId }, 'id');
     await processPending(2);
     const [profile, memories, summaries, loops] = await Promise.all([

@@ -41,8 +41,8 @@ test('PAL dibuat sekali, disimpan, lalu dipakai ulang untuk conversation', async
     const conversationPayload = JSON.parse(calls.at(-1).options.body);
     assert.equal(conversationPayload.properties.max_call_duration, 180);
     assert.equal(conversationPayload.pal_id, 'p12345');
-    assert.deepEqual(conversationPayload.participant_tags, ['naya-primary-user-v1']);
-    assert.equal(conversationPayload.memory_stores, undefined);
+    assert.equal(Object.hasOwn(conversationPayload, 'participant_tags'), false);
+    assert.equal(Object.hasOwn(conversationPayload, 'memory_stores'), false);
     assert.equal(conversationPayload.dynamic_greeting, true);
     assert.match(conversationPayload.conversational_context, /Jangan selalu memakai kalimat sama/);
     const saved = await readFile(stateFile, 'utf8');
@@ -51,9 +51,9 @@ test('PAL dibuat sekali, disimpan, lalu dipakai ulang untuk conversation', async
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
 
-test('tag memori stabil lintas sesi dan override server bekerja tanpa data perangkat', async () => {
+test('semua sesi Tavus stateless tanpa tag atau field memori', async () => {
   const bodies = [];
-  const client = makeTavusClient({ apiKey: 'dummy', envPalId: 'p-existing', memoryStore: 'naya_user_test_uuid',
+  const client = makeTavusClient({ apiKey: 'dummy', envPalId: 'p-existing',
     fetchImpl: async (url, options) => {
       if (url.endsWith('/v2/pals/p-existing')) return Response.json({ pal_id: 'p-existing', pal_name: 'Naya', default_face_id: FACE_ID,
         layers: { conversational_flow: { turn_detection_model: 'sparrow-2', turn_taking_patience: 'low', pal_interruptibility: 'medium' } } });
@@ -65,13 +65,35 @@ test('tag memori stabil lintas sesi dan override server bekerja tanpa data peran
   await client.createConversation();
   assert.equal(bodies.length, 2);
   for (const body of bodies) {
-    assert.deepEqual(body.participant_tags, ['naya_user_test_uuid']);
-    assert.equal(body.memory_stores, undefined);
+    assert.equal(Object.hasOwn(body, 'participant_tags'), false);
+    assert.equal(Object.hasOwn(body, 'memory_stores'), false);
     assert.equal(body.device_id, undefined);
     assert.equal(body.browser_fingerprint, undefined);
     assert.equal(body.face_id, FACE_ID);
     assert.deepEqual(body.properties.languages, ['id']);
   }
+});
+
+test('hanya endpoint PAL, conversation, dan transkrip dipanggil; tidak ada Tavus memory API', async () => {
+  const calls = [];
+  const client = makeTavusClient({ apiKey: 'private-test-key', envPalId: 'p-existing',
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      if (url.endsWith('/v2/pals/p-existing')) return Response.json({ pal_id: 'p-existing', pal_name: 'Naya', default_face_id: FACE_ID });
+      if (url.endsWith('/v2/conversations')) return Response.json({ conversation_id: 'c12345', conversation_url: 'https://tavus.daily.co/c12345', status: 'active' });
+      if (url.endsWith('/v2/conversations/c12345?verbose=true')) return Response.json({ events: [{ event_type: 'application.transcription_ready', properties: { transcript: [] } }] });
+      throw Error('Unexpected Tavus endpoint');
+    },
+  });
+  await client.createConversation({ conversationalContext: 'Sapaan dari Supabase' });
+  const transcript = await client.getConversation('c12345');
+  assert.equal(transcript.events[0].event_type, 'application.transcription_ready');
+  assert.deepEqual(calls.map((call) => new URL(call.url).pathname), ['/v2/pals/p-existing', '/v2/conversations', '/v2/conversations/c12345']);
+  const body = JSON.parse(calls[1].options.body);
+  assert.match(body.conversational_context, /Sapaan dari Supabase/);
+  assert.equal(Object.hasOwn(body, 'participant_tags'), false);
+  assert.equal(Object.hasOwn(body, 'memory_stores'), false);
+  assert.doesNotMatch(JSON.stringify(body), /private-test-key/);
 });
 
 test('PAL dari environment diverifikasi dan tidak dibuat ulang', async () => {
