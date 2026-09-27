@@ -36,4 +36,3 @@ Jangan buat conversation otomatis untuk pengujian. Setelah Supabase dan migrasi 
 Tes mock lokal tidak membuat Tavus conversation dan tidak memakai menit Tavus. Hasil live hanya boleh disebut PASSED setelah seluruh alur Supabase dan recall dua sesi diverifikasi.
 
 Referensi resmi: [Tavus Get Conversation](https://docs.tavus.io/api-reference/conversations/get-conversation), [Tavus Create Conversation](https://docs.tavus.io/api-reference/conversations/create-conversation), [Gemini structured output](https://ai.google.dev/gemini-api/docs/structured-output), [Supabase API keys](https://supabase.com/docs/guides/api/api-keys).
-

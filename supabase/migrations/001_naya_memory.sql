@@ -94,4 +94,3 @@ grant select, insert, update, delete on
   public.naya_users, public.naya_conversation_sessions, public.naya_conversation_messages,
   public.naya_memories, public.naya_user_profile, public.naya_open_loops, public.naya_session_summaries
   to service_role;
-

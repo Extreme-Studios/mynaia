@@ -52,4 +52,3 @@ Skema ada di `supabase/migrations/001_naya_memory.sql`: tujuh tabel berawalan `n
 ## Privasi dan keamanan awal
 
 Kunci API hanya di backend/env lokal. Endpoint sesi kelak perlu autentikasi, rate limit, batas durasi, dan kontrol anggaran sebelum pilot. Pengguna perlu penjelasan bahwa avatar dan suara dihasilkan AI. Detail retensi media/transkrip Tavus dan persetujuan pengguna diperiksa lagi sebelum sesi nyata.
-
