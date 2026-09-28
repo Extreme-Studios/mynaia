@@ -8,7 +8,7 @@ const eq = (value) => `eq.${value}`;
 const now = () => new Date().toISOString();
 
 export function buildMemoryContext({ profile = [], memories = [], summaries = [], loops = [] } = {}) {
-  const lines = ['Konteks pribadi untuk Naya. Pakai hanya bila relevan; jangan menyebut database atau daftar memori. Jangan mengarang.'];
+  const lines = ['Konteks pribadi untuk Naia. Pakai hanya bila relevan; jangan menyebut database atau daftar memori. Jangan mengarang.'];
   const p = profile[0];
   if (p?.display_name) lines.push(`Nama: ${p.display_name}`);
   if (p?.preferred_language) lines.push(`Bahasa: ${p.preferred_language}`);

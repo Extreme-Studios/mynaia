@@ -1,6 +1,6 @@
-const CACHE = 'mynaia-static-v10';
-const STATIC = new Set(['/', '/index.html', '/naya', '/dr-paws', '/styles.css', '/app.js', '/controller.mjs', '/self-view.mjs', '/motion.mjs', '/gsap.min.js',
-  '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png']);
+const CACHE = 'mynaia-static-v15';
+const STATIC = new Set(['/', '/index.html', '/naia', '/naya', '/dr-paws', '/styles.css', '/app.js', '/controller.mjs', '/self-view.mjs', '/motion.mjs', '/gsap.min.js',
+  '/cinematic.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png']);
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll([...STATIC])).then(() => self.skipWaiting()));
 });
@@ -16,5 +16,13 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(fetch(event.request, { cache: 'no-store' }).catch(async () => (await caches.open(CACHE)).match('/index.html')));
     return;
   }
-  if (STATIC.has(url.pathname)) event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request)));
+  if (STATIC.has(url.pathname) || /^\/cinematic-[A-Z0-9]+\.js$/.test(url.pathname)) {
+    event.respondWith(caches.open(CACHE).then(async (cache) => {
+      const cached = await cache.match(event.request);
+      if (cached) return cached;
+      const response = await fetch(event.request);
+      if (response.ok) await cache.put(event.request, response.clone());
+      return response;
+    }));
+  }
 });

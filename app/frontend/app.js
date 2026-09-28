@@ -1,14 +1,22 @@
 import { createConversationController } from './controller.mjs';
 import { createSelfView } from './self-view.mjs';
 import { startProductMotion, animateVisible, setupPageTransitions } from './motion.mjs';
+import { createCinematic } from './cinematic.js';
 
 const $ = (selector) => document.querySelector(selector);
 const mode = location.pathname === '/dr-paws' ? 'dr_paws' : 'naya';
-const isHome = !['/naya', '/dr-paws'].includes(location.pathname);
-const modeName = mode === 'naya' ? 'Naya' : 'Dr. Paws';
+const isHome = !['/naia', '/naya', '/dr-paws'].includes(location.pathname);
+const modeName = mode === 'naya' ? 'Naia' : 'Dr. Paws';
 const modeReady = { naya: true, dr_paws: false };
-startProductMotion();
-setupPageTransitions();
+const cinematic = createCinematic({ route: location.pathname === '/naia' ? '/naya' : location.pathname });
+startProductMotion(cinematic);
+setupPageTransitions(cinematic);
+document.querySelectorAll('[data-world]').forEach((zone) => {
+  zone.addEventListener('pointerenter', () => cinematic.focusWorld(zone.dataset.world));
+  zone.addEventListener('pointerleave', () => cinematic.focusWorld(''));
+  zone.addEventListener('focusin', () => cinematic.focusWorld(zone.dataset.world));
+});
+addEventListener('pagehide', () => cinematic.destroy(), { once: true });
 let accessGranted = false;
 let mountedUrl = '';
 let activeId = '';
@@ -30,8 +38,8 @@ $('#settings-mode').textContent = isHome ? 'Beranda' : modeName;
 $('#mode-badge').textContent = mode === 'naya' ? 'AI companion' : 'Teman cerita';
 $('#avatar-mark').textContent = mode === 'naya' ? 'N' : '🐾';
 $('#placeholder-description').textContent = mode === 'naya'
-  ? 'Naya dapat mengingat hal-hal penting dari obrolan sebelumnya.' : 'Teman cerita yang ramah untuk anak. Pilih profil, lalu mulai saat siap.';
-$('#placeholder-title').textContent = mode === 'naya' ? 'Siap ngobrol dengan Naya?' : 'Siap bercerita dengan Dr. Paws?';
+  ? 'Naia dapat mengingat hal-hal penting dari obrolan sebelumnya.' : 'Teman cerita yang ramah untuk anak. Pilih profil, lalu mulai saat siap.';
+$('#placeholder-title').textContent = mode === 'naya' ? 'Siap ngobrol dengan Naia?' : 'Siap bercerita dengan Dr. Paws?';
 $('#start').textContent = mode === 'naya' ? 'Mulai Ngobrol' : 'Mulai Cerita';
 document.body.dataset.mode = mode;
 document.title = isHome ? 'MyNaiA — Teman AI' : `${modeName} — MyNaiA`;
@@ -151,6 +159,7 @@ function render(state) {
   const active = Boolean(state.session);
   const pending = state.phase === 'connecting';
   document.body.classList.toggle('call-active', active);
+  cinematic.setCallActive(active);
   $('#call-view').classList.toggle('in-call', active);
   $('#start').disabled = !state.canStart || !accessGranted || !navigator.onLine || !modeReady[mode] || (mode === 'dr_paws' && !subjectId);
   $('#start').textContent = state.phase === 'error' ? 'Coba Lagi' : mode === 'naya' ? 'Mulai Ngobrol' : 'Mulai Cerita';
@@ -175,7 +184,7 @@ function render(state) {
     active ? 'Sesi belum dapat ditutup. Periksa koneksi lalu tekan Akhiri lagi.' : friendlyCallError(state.message) : state.message;
   $('#precall').hidden = active || pending || state.phase === 'ended';
   $('#placeholder-title').textContent = pending ? `${modeName} sedang bersiap…` :
-    mode === 'naya' ? 'Siap ngobrol dengan Naya?' : 'Siap bercerita dengan Dr. Paws?';
+    mode === 'naya' ? 'Siap ngobrol dengan Naia?' : 'Siap bercerita dengan Dr. Paws?';
   const postcallJustOpened = state.phase === 'ended' && $('#postcall').hidden;
   $('#postcall').hidden = state.phase !== 'ended';
   $('#room-layout').hidden = state.phase === 'ended';
@@ -229,7 +238,7 @@ $('#start').addEventListener('click', async () => {
   if (!accessGranted || !modeReady[mode] || !navigator.onLine || (mode === 'dr_paws' && !subjectId)) return;
   if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
     $('#error').hidden = false;
-    $('#error').textContent = mode === 'naya' ? 'Naya membutuhkan akses mikrofon agar bisa mendengar kamu. Buka lewat HTTPS dan periksa izin browser.' :
+    $('#error').textContent = mode === 'naya' ? 'Naia membutuhkan akses mikrofon agar bisa mendengar kamu. Buka lewat HTTPS dan periksa izin browser.' :
       'Dr. Paws perlu mikrofon supaya bisa mendengar ceritamu. Buka lewat HTTPS dan periksa izin browser.';
     return;
   }
@@ -381,7 +390,7 @@ async function refreshAdminProfiles() {
   }
   select.value = String(data.active);
   const selected = data.profiles.find((item) => item.active);
-  $('#admin-profile-status').textContent = `Aktif: Tavis ${data.active}. Naya: ${selected?.nayaConfigured ? 'siap' : 'belum dikonfigurasi'}. Dr. Paws: ${selected?.drPawsConfigured ? 'siap' : 'belum dikonfigurasi'}.`;
+  $('#admin-profile-status').textContent = `Aktif: Tavis ${data.active}. Naia: ${selected?.nayaConfigured ? 'siap' : 'belum dikonfigurasi'}. Dr. Paws: ${selected?.drPawsConfigured ? 'siap' : 'belum dikonfigurasi'}.`;
   $('#admin-message').textContent = '';
 }
 
@@ -411,7 +420,7 @@ $('#admin-inspect').addEventListener('click', async () => {
     const result = await apiRequest('/api/admin/tavus-profile/inspect', { method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ profile: Number($('#admin-profile').value) }) });
-    $('#admin-message').textContent = `Tavis ${result.profile}: autentikasi ${result.apiAuthenticated ? 'berhasil' : 'belum ada key'}; Naya PAL ${result.nayaPalAccessible ? 'tersedia' : 'belum tersedia'}; Dr. Paws PAL ${result.drPawsPalAccessible ? 'tersedia' : 'belum tersedia'}; Face Naya ${result.nayaFaceAccessible ? 'tersedia' : 'belum tersedia'}; Face Dr. Paws ${result.drPawsFaceAccessible ? 'tersedia' : 'belum tersedia'}.`;
+    $('#admin-message').textContent = `Tavis ${result.profile}: autentikasi ${result.apiAuthenticated ? 'berhasil' : 'belum ada key'}; Naia PAL ${result.nayaPalAccessible ? 'tersedia' : 'belum tersedia'}; Dr. Paws PAL ${result.drPawsPalAccessible ? 'tersedia' : 'belum tersedia'}; Face Naia ${result.nayaFaceAccessible ? 'tersedia' : 'belum tersedia'}; Face Dr. Paws ${result.drPawsFaceAccessible ? 'tersedia' : 'belum tersedia'}.`;
   } catch (error) { $('#admin-message').textContent = error.message; }
   finally { $('#admin-inspect').disabled = false; }
 });
@@ -427,7 +436,7 @@ apiRequest('/api/access/status', { signal: AbortSignal.timeout?.(10000) }).then(
     $('#debug-text').textContent = `Mode ${modeName}: ${modeReady[mode] ? 'siap' : 'belum dikonfigurasi'}.`;
     if (!modeReady[mode]) {
       $('#error').hidden = false;
-      $('#error').textContent = mode === 'dr_paws' ? 'Dr. Paws belum dikonfigurasi.' : 'Naya belum dikonfigurasi.';
+      $('#error').textContent = mode === 'dr_paws' ? 'Dr. Paws belum dikonfigurasi.' : 'Naia belum dikonfigurasi.';
     }
     render(controller.snapshot());
   }).catch(() => { $('#debug-text').textContent = 'Status backend tidak tersedia.'; });

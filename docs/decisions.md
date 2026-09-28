@@ -1,6 +1,6 @@
 # Keputusan desain
 
-1. **Identitas Naya dipisah dari wajah avatar.** Pada tahap awal stock Face Tavus adalah visual sementara. UI menyebut Naya sebagai AI; kecocokan visual karakter diuji kemudian.
+1. **Identitas Naia dipisah dari wajah avatar.** Pada tahap awal stock Face Tavus adalah visual sementara. UI menyebut Naia sebagai AI; kecocokan visual karakter diuji kemudian.
 2. **PAL + Face mengikuti dokumentasi Tavus terkini.** Variabel `TAVUS_PERSONA_ID`/`TAVUS_REPLICA_ID` tetap ada sebagai placeholder yang diminta, tetapi jalur integrasi baru memakai `TAVUS_PAL_ID`/`TAVUS_FACE_ID` bila API akun memakai nomenklatur terbaru. Jangan mengisi keduanya dengan ID rekaan.
 3. **Backend menjadi pemilik secret dan sesi.** Browser hanya mendapat URL sesi yang dibutuhkan; API key tidak diekspos lewat variabel frontend.
 4. **LLM Tavus-hosted direncanakan untuk proof of concept.** Opsi Gemini disimpan sebagai batas adapter, belum diaktifkan dan bisa memerlukan biaya/akun terpisah.

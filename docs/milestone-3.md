@@ -1,4 +1,4 @@
-# Milestone 3 — Gemini Brain + Naya Persona Integration
+# Milestone 3 — Gemini Brain + Naia Persona Integration
 
 ## Status
 
@@ -11,7 +11,7 @@ Konfigurasi aktif: microphone → Tavus STT/Sparrow-2 → Tavus-hosted `tavus-ge
 ## Konfigurasi dan keputusan PAL
 
 - Gemini base URL: `https://generativelanguage.googleapis.com/v1beta/openai/`; model default `gemini-3.8-flash`.
-- PAL Milestone 2 `p1be7dd26adf` dipertahankan. PATCH resmi tersedia, tetapi akan mengubah PAL yang sudah lulus uji Milestone 2. Karena itu dibuat tepat satu PAL baru `Naya Gemini`, ID `p54bfaf633c5`.
+- PAL Milestone 2 `p1be7dd26adf` dipertahankan. PATCH resmi tersedia, tetapi akan mengubah PAL yang sudah lulus uji Milestone 2. Karena itu dibuat tepat satu PAL baru `Naia Gemini`, ID `p54bfaf633c5`.
 - Konfigurasi saat PAL Gemini pertama dibuat: pipeline `full`, Face `rc9cff32ceba`, Bahasa Indonesia, prompt V2 yang saat itu ada di `character/system-prompt.md`, turn patience `high`, interruptibility `medium`, idle engagement `off`, speculative inference aktif. Setelah tes kompatibilitas Gemini SSE, `reasoning_effort: low` ditambahkan pada `layers.llm.extra_body` untuk mengutamakan latency. GET PAL mengonfirmasi nilai itu tersimpan. Konfigurasi aktif setelah patch latensi dicatat di bagian bawah.
 - ID PAL Gemini tersimpan di state lokal `app/backend/.naya-gemini-pal.json` dan `TAVUS_PAL_ID` di `.env` lokal sudah diarahkan ke ID baru. Kedua file diabaikan Git. Saat conversation berikutnya diminta, backend memverifikasi dan memakai ulang PAL; tidak membuat PAL baru selama ID ini tersedia.
 - Gemini key tetap di lingkungan server. Aplikasi hanya menampilkan boolean `configured` dan nama model pada `/api/gemini/status`.
@@ -61,7 +61,7 @@ Pada PAL existing `p54bfaf633c5`, hanya path `/layers/llm` yang di-PATCH dari Ge
 
 Backup konfigurasi sebelum patch ada di `app/backend/.naya-fast-llm-backup-2026-09-27.json` (diabaikan Git dan Vercel). Nilai kunci disunting dari backup; metadata `secret_reference` menunjuk ke `GEMINI_API_KEY` di `.env`. Untuk rollback, ambil `pal.layers.llm` dari backup, isi kembali `api_key` dari environment lokal, lalu PATCH `replace /layers/llm` pada PAL yang sama. Validasi aplikasi menerima baik Gemini BYO lama maupun hosted model ini. Jangan mengirim file backup atau nilai key ke frontend/repository.
 
-PATCH mengembalikan HTTP 200. Satu GET verifikasi setelah patch mengonfirmasi Face `rc9cff32ceba`, prompt Naya 1.322 karakter (hash sama), Sparrow-2, patience `low`, interruptibility `medium`, idle engagement `off`, dan `languages: ["id"]` tetap ada. GET tidak mengembalikan objek `layers.llm` setelah nilainya diganti ke hosted default; karena itu model dan speculative inference **tidak terlihat secara eksplisit di respons GET**. Dokumentasi Tavus menetapkan `tavus-gemma-4` dan `speculative_inference: true` sebagai default. Penghapusan `base_url`/`api_key` Gemini dari GET dapat dipastikan; efektivitas runtime hosted model tetap belum diuji karena tidak ada conversation/live session. Tes lokal memakai mock dan tidak menggunakan conversation minutes.
+PATCH mengembalikan HTTP 200. Satu GET verifikasi setelah patch mengonfirmasi Face `rc9cff32ceba`, prompt Naia 1.322 karakter (hash sama), Sparrow-2, patience `low`, interruptibility `medium`, idle engagement `off`, dan `languages: ["id"]` tetap ada. GET tidak mengembalikan objek `layers.llm` setelah nilainya diganti ke hosted default; karena itu model dan speculative inference **tidak terlihat secara eksplisit di respons GET**. Dokumentasi Tavus menetapkan `tavus-gemma-4` dan `speculative_inference: true` sebagai default. Penghapusan `base_url`/`api_key` Gemini dari GET dapat dipastikan; efektivitas runtime hosted model tetap belum diuji karena tidak ada conversation/live session. Tes lokal memakai mock dan tidak menggunakan conversation minutes.
 
 ## Rujukan spesifikasi
 

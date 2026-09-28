@@ -7,8 +7,8 @@ import { FACE_ID, loadRuntimePrompt, makeTavusClient, TavusError } from '../app/
 
 test('system prompt runtime bersih dari Markdown pembungkus', async () => {
   const prompt = await loadRuntimePrompt();
-  assert.match(prompt, /^Kamu adalah Naya/);
-  assert.doesNotMatch(prompt, /## Catatan integrasi|# System prompt Naya/);
+  assert.match(prompt, /^Kamu adalah Naia/);
+  assert.doesNotMatch(prompt, /## Catatan integrasi|# System prompt Naia/);
   assert.match(prompt, /bukan psikolog/);
 });
 
@@ -31,7 +31,7 @@ test('PAL dibuat sekali, disimpan, lalu dipakai ulang untuk conversation', async
     assert.equal(two, 'p12345');
     assert.equal(calls.filter((call) => call.url.endsWith('/v2/pals')).length, 1);
     const palPayload = JSON.parse(calls[0].options.body);
-    assert.equal(palPayload.pal_name, 'Naya MVP Test');
+    assert.equal(palPayload.pal_name, 'Naia MVP Test');
     assert.equal(palPayload.pipeline_mode, 'full');
     assert.equal(palPayload.default_face_id, FACE_ID);
     assert.deepEqual(palPayload.languages, ['id']);

@@ -31,7 +31,7 @@ test('delapan profil valid, 0/9 ditolak, dan fallback legacy hanya untuk profil 
   assert.equal(second.nayaPalId, '');
   assert.equal(second.drPawsPalId, '');
   assert.equal(second.nayaFaceId, '');
-  assert.match(modeProfileError(second, 'naya').message, /Naya/);
+  assert.match(modeProfileError(second, 'naya').message, /Naia/);
   assert.match(modeProfileError(second, 'dr_paws').message, /Dr\. Paws/);
   const safe = publicProfileStatus(second, 1);
   assert.equal(safe.apiConfigured, true);

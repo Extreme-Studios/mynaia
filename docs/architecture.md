@@ -2,19 +2,19 @@
 
 ## Multi-Tavus Profile Engine
 
-Supabase menyimpan `naya_app_settings.tavus_active_profile` sebagai nomor global 1–8 dan tetap menjadi satu-satunya sumber memori permanen. Vercel menyimpan delapan set kredensial Tavus; backend membaca nomor aktif dari Supabase pada setiap Start, memilih PAL dan Face sesuai mode, lalu menyimpan `tavus_profile_used` bersama PAL, Face, dan conversation ID di sesi. End, status provider, dan pengambilan transkrip memakai profil yang tercatat pada sesi, sehingga switch manual tidak memindahkan sesi berjalan. Memori Naya memakai ID pengguna yang sama di semua profil. Dr. Paws tetap terisolasi dalam namespace mode sendiri.
+Supabase menyimpan `naya_app_settings.tavus_active_profile` sebagai nomor global 1–8 dan tetap menjadi satu-satunya sumber memori permanen. Vercel menyimpan delapan set kredensial Tavus; backend membaca nomor aktif dari Supabase pada setiap Start, memilih PAL dan Face sesuai mode, lalu menyimpan `tavus_profile_used` bersama PAL, Face, dan conversation ID di sesi. End, status provider, dan pengambilan transkrip memakai profil yang tercatat pada sesi, sehingga switch manual tidak memindahkan sesi berjalan. Memori Naia memakai ID pengguna yang sama di semua profil. Dr. Paws tetap terisolasi dalam namespace mode sendiri.
 
 Password akses awal menjadi satu-satunya gerbang dashboard dan Settings. API profil memeriksa cookie akses yang sama (HttpOnly, SameSite=Strict) dan Origin pada POST; tidak ada admin secret kedua. API profil mengembalikan status konfigurasi tanpa key. Inspeksi profil hanya memakai Tavus GET untuk autentikasi dan akses PAL/Face; tidak ada create PAL atau conversation di jalur itu. Profil dengan PAL/Face yang belum diisi tidak dapat memulai mode terkait. Kegagalan create tidak memicu rotasi profil. Aplikasi menampilkan petunjuk memeriksa usage di dashboard Tavus tanpa mengarang sisa menit.
 
-Satu situs menyediakan home `/`, Naya `/naya`, dan Dr. Paws `/dr-paws`. Browser memakai UI video call vanilla JS; Vercel memegang credential dan memilih PAL/Face dari mode. Naya memakai PAL existing `p54bfaf633c5` dan Face `rc9cff32ceba`; Dr. Paws memakai PAL `pf2c904714a5` dan Face `r21a52c53fa4`. Frontend tidak menerima API key.
+Satu situs menyediakan home `/`, Naia `/naia`, dan Dr. Paws `/dr-paws`. Browser memakai UI video call vanilla JS; Vercel memegang credential dan memilih PAL/Face dari mode. Naia memakai PAL existing `p54bfaf633c5` dan Face `rc9cff32ceba`; Dr. Paws memakai PAL `pf2c904714a5` dan Face `r21a52c53fa4`. Frontend tidak menerima API key.
 
-Supabase adalah satu-satunya memori permanen. Migrasi `002_mode_namespaces.sql` memberi default `mode=naya` untuk seluruh data lama; `004_dr_paws_subject_memory.sql` menambah `subject_id` UUID untuk Dr. Paws. Semua query memori Naya dibatasi `mode=naya`; Dr. Paws memakai `user_id + mode=dr_paws + subject_id` untuk session, summary, memori, dan open loop. Tavus hanya menangani percakapan realtime dan sumber transkrip. Mode dipilih sebelum call; backend menolak durasi selain 3/5/10/20 menit.
+Supabase adalah satu-satunya memori permanen. Migrasi `002_mode_namespaces.sql` memberi default `mode=naya` untuk seluruh data lama; `004_dr_paws_subject_memory.sql` menambah `subject_id` UUID untuk Dr. Paws. Semua query memori Naia dibatasi `mode=naya`; Dr. Paws memakai `user_id + mode=dr_paws + subject_id` untuk session, summary, memori, dan open loop. Tavus hanya menangani percakapan realtime dan sumber transkrip. Mode dipilih sebelum call; backend menolak durasi selain 3/5/10/20 menit.
 
 ## Dr. Paws Persistent Memory
 
 ```text
 Supabase
-├── Naya memory (mode=naya, subject_id=NULL)
+├── Naia memory (mode=naya, subject_id=NULL)
 └── Dr. Paws (mode=dr_paws)
     ├── Subject A memory (subject_id UUID A)
     ├── Subject B memory (subject_id UUID B)
@@ -25,11 +25,11 @@ Supabase
 
 PWA menyimpan shell statis saja. `/api/` selalu jaringan dan tidak pernah masuk cache service worker. Fullscreen dan Wake Lock adalah peningkatan browser yang gagal dengan aman. Daily Prebuilt tetap pemilik kontrol media; host hanya menampilkan status yang dapat dibuktikan. Self-view compact ditempatkan di kanan pada desktop dan floating kecil pada HP, dengan mode Hidden sebagai preferensi UI. Pengaturan kualitas video yang tidak didukung dihapus. Detail keputusan dan pengujian di `docs/milestone-5.md`.
 
-Milestone 6 menambah lapisan presentasi pada frontend vanilla JavaScript: `motion.mjs` mengatur splash dan transisi dengan GSAP, sedangkan CSS dan HTML mengatur landing, profil anak, call, end state, dan Settings. Tidak ada perubahan kontrak Tavus, Supabase, atau Gemini. Splash tidak memulai sesi. Service worker v10 memakai network-first untuk navigasi, tidak menyimpan respons `/api/`, dan halaman yang idle reload saat worker baru mengambil alih. Detail di `docs/milestone-6.md`.
+Milestone 6 memakai Three.js di `app/frontend/cinematic/` untuk scene 3D splash, lingkungan dua karakter, depth particles, parallax kamera, dan pencahayaan. GSAP di `motion.mjs` menyelaraskan timeline splash serta transisi route. Renderer mencoba WebGPU pada browser aman, lalu WebGL, lalu visual CSS bila GPU gagal. Kualitas otomatis membatasi jumlah partikel dan pixel ratio pada perangkat kecil. Satu render loop berhenti ketika tab tersembunyi atau call Tavus aktif, dan resource GPU dibersihkan saat pagehide. HTML tetap memegang navigasi dan kontrol. Service worker v15 menyimpan shell statis, memakai network-first untuk navigasi, dan tidak menyimpan respons `/api/`. Tidak ada perubahan kontrak Tavus, Supabase, atau Gemini. Detail di `docs/milestone-6.md`.
 
 ## Sasaran pengalaman
 
-Pengguna membuka aplikasi, melihat video Naya sebagai elemen utama, memberi izin microphone, lalu berbicara seperti panggilan video. Tahap stock Face adalah proof of concept identitas percakapan Naya; kesesuaian wajah Indonesia belum terbukti.
+Pengguna membuka aplikasi, melihat video Naia sebagai elemen utama, memberi izin microphone, lalu berbicara seperti panggilan video. Tahap stock Face adalah proof of concept identitas percakapan Naia; kesesuaian wajah Indonesia belum terbukti.
 
 ## Komponen dan batas
 
@@ -41,13 +41,13 @@ Browser (UI, izin mic, media, kontrol)
        └─ Tavus CVI (PAL + Face, STT, TTS, lip sync, video, LLM hosted)
 ```
 
-Backend menyimpan kunci Tavus, Gemini, dan Supabase di server, membuat sesi, mengembalikan URL sesi terbatas ke browser, dan mengakhiri sesi lewat API. Browser tidak menerima API key. PAL memuat persona Naya; Face menentukan tampilan avatar. LLM percakapan aktif adalah Tavus-hosted `tavus-gemma-4`; Gemini BYO tetap opsi rollback, sedangkan Gemini `generateContent` dipakai terpisah setelah sesi untuk memproses memori. Backend memuat context ringkas dari Supabase sebelum membuat sesi Tavus. `participant_tags` dan `memory_stores` Tavus tidak pernah dikirim; identitas Naya tidak bergantung pada PAL atau Tavus API key.
+Backend menyimpan kunci Tavus, Gemini, dan Supabase di server, membuat sesi, mengembalikan URL sesi terbatas ke browser, dan mengakhiri sesi lewat API. Browser tidak menerima API key. PAL memuat persona Naia; Face menentukan tampilan avatar. LLM percakapan aktif adalah Tavus-hosted `tavus-gemma-4`; Gemini BYO tetap opsi rollback, sedangkan Gemini `generateContent` dipakai terpisah setelah sesi untuk memproses memori. Backend memuat context ringkas dari Supabase sebelum membuat sesi Tavus. `participant_tags` dan `memory_stores` Tavus tidak pernah dikirim; identitas Naia tidak bergantung pada PAL atau Tavus API key.
 
 ## Wireframe layar
 
 ```text
 ┌─────────────────────────────────────┐
-│ Naya (AI)             ⚙ Settings    │
+│ Naia (AI)             ⚙ Settings    │
 │                                     │
 │       VIDEO AVATAR DOMINAN          │
 │                                     │

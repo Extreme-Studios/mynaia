@@ -13,13 +13,13 @@ Status (27 September 2026): project Supabase `mynaia` aktif, migrasi berhasil, t
 
 **PERSISTENT MEMORY PROVIDER = SUPABASE. TAVUS MEMORY = DISABLED.** Setiap create conversation tidak mengirim `participant_tags`, `memory_stores`, atau field lain untuk memori lintas sesi Tavus. Tidak ada Tavus memory lookup, learning, pinned memory, status, atau debug endpoint di aplikasi. `NAYA_MEMORY_STORE` dan pembuat tag lama sudah dihapus. Jika Supabase belum siap, backend menolak pembuatan sesi sebelum memanggil Tavus, sehingga tidak beralih ke memori Tavus. `/api/memory/status` selalu menyebut provider `supabase` dan melaporkan `enabled: false` ketika database belum dikonfigurasi.
 
-Memory store Tavus yang mungkin dibuat oleh versi lama dianggap **orphaned/unused**. Aplikasi Naya tidak lagi membaca atau menulisnya; data akun Tavus tidak dihapus otomatis. Menurut [dokumentasi create conversation Tavus](https://docs.tavus.io/api-reference/conversations/create-conversation), menghilangkan `participant_tags` membuat sesi stateless untuk memori lintas conversation. Tidak ada Tavus PAL, Face, Sparrow-2, patience, interruptibility, atau LLM yang diubah.
+Memory store Tavus yang mungkin dibuat oleh versi lama dianggap **orphaned/unused**. Aplikasi Naia tidak lagi membaca atau menulisnya; data akun Tavus tidak dihapus otomatis. Menurut [dokumentasi create conversation Tavus](https://docs.tavus.io/api-reference/conversations/create-conversation), menghilangkan `participant_tags` membuat sesi stateless untuk memori lintas conversation. Tidak ada Tavus PAL, Face, Sparrow-2, patience, interruptibility, atau LLM yang diubah.
 
 Validasi cleanup: audit runtime menemukan 0 referensi Tavus memory API/tag/store. `npm run check`, `npm test` (31/31 mock tests), dan `npm run build` lulus tanpa membuat sesi nyata. Tes mencakup payload stateless, context Supabase, retrieval transkrip, identitas yang tetap saat PAL/key Tavus berubah, gagal tertutup ketika Supabase tidak siap, dan respons tanpa key. Recall lintas sesi tetap menunggu tes manusia.
 
 ## Alur data
 
-- Sebelum panggilan, backend membaca profil, maksimal 12 memori aktif, tiga ringkasan terbaru, dan tiga open loop dari Supabase. Context dibatasi 5.000 karakter, sekitar 500–1.500 token tergantung isinya, lalu disisipkan ke `conversational_context` Tavus. Sapaan dinamis tetap aktif; Naya memakai fakta relevan secara natural tanpa menyebut database.
+- Sebelum panggilan, backend membaca profil, maksimal 12 memori aktif, tiga ringkasan terbaru, dan tiga open loop dari Supabase. Context dibatasi 5.000 karakter, sekitar 500–1.500 token tergantung isinya, lalu disisipkan ke `conversational_context` Tavus. Sapaan dinamis tetap aktif; Naia memakai fakta relevan secara natural tanpa menyebut database.
 - Setelah Tavus mengakhiri sesi, backend memanggil `GET /v2/conversations/{conversation_id}?verbose=true` dan hanya mengambil `application.transcription_ready.properties.transcript`. Jika belum ada, sesi tetap pending. Browser mengirim satu sinkronisasi tambahan delapan detik setelah End; sebelum panggilan berikutnya backend juga mencoba menyelesaikan sesi pending. `POST /api/memory/sync` tersedia untuk sinkronisasi manual; pada Vercel dibatasi kode akses.
 - Transcript disimpan per giliran di `conversation_messages` dengan role, content, timestamp, seconds_from_start, duration, dan urutan. `(session_id, position)` unik, sehingga impor ulang tidak menggandakan baris. Audio dan video tidak disimpan.
 - Gemini membaca teks yang sudah disaring, menghasilkan JSON berisi ringkasan, tone, topik, follow-up, memori, open loop, dan pembaruan profil. Memori memakai `(user_id, category, normalized_key)` untuk deduplikasi; fakta bertentangan memperbarui key lama atau menonaktifkan key yang digantikan. Open loop dapat ditandai resolved. Seluruh transkrip tetap menjadi arsip historis, sedangkan memori adalah indeks/interpretasi.
@@ -34,9 +34,9 @@ Transkrip dimaksudkan sebagai arsip tekstual, tetapi pola yang tampak seperti AP
 
 Jangan buat conversation otomatis untuk pengujian. Setelah Supabase dan migrasi aktif:
 
-1. Sesi 1: katakan “Namaku Adi”, “Aku suka kopi susu”, “Aku lagi ngerjain Naya Virtual Girl”, dan “Besok aku ada meeting penting”. Akhiri normal.
+1. Sesi 1: katakan “Namaku Adi”, “Aku suka kopi susu”, “Aku lagi ngerjain Naia Virtual Girl”, dan “Besok aku ada meeting penting”. Akhiri normal.
 2. Tunggu sampai `/api/memory/status` menunjukkan tidak ada sesi pending. Periksa di Supabase bahwa session, pesan teks, ringkasan, memori, dan open loop tersimpan. Jangan buka transkrip lewat endpoint publik.
-3. Sesi 2 dari HP atau browser lain: jangan ulang fakta. Tanyakan secara natural ingin minum apa dan proyek apa yang sedang dikerjakan. Amati apakah Naya menindaklanjuti meeting bila relevan, tanpa memuntahkan seluruh memori.
+3. Sesi 2 dari HP atau browser lain: jangan ulang fakta. Tanyakan secara natural ingin minum apa dan proyek apa yang sedang dikerjakan. Amati apakah Naia menindaklanjuti meeting bila relevan, tanpa memuntahkan seluruh memori.
 4. Ulangi pemeriksaan setelah mengganti PAL/key hanya bila memang diperlukan nantinya; desain identitas sudah independen, tetapi migrasi provider nyata belum diuji.
 
 Tes mock lokal tidak membuat Tavus conversation dan tidak memakai menit Tavus. Hasil live hanya boleh disebut PASSED setelah seluruh alur Supabase dan recall dua sesi diverifikasi.

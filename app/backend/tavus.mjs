@@ -25,9 +25,9 @@ export class TavusError extends Error {
 export async function loadRuntimePrompt(file = promptFile) {
   const markdown = await readFile(file, 'utf8');
   const markers = [...markdown.matchAll(/^---\s*$/gm)];
-  if (markers.length < 2) throw new TavusError('INVALID_PROMPT', 'System prompt Naya tidak lengkap.', 500);
+  if (markers.length < 2) throw new TavusError('INVALID_PROMPT', 'System prompt Naia tidak lengkap.', 500);
   const prompt = markdown.slice(markers[0].index + markers[0][0].length, markers[1].index).trim();
-  if (!prompt.startsWith('Kamu adalah Naya')) throw new TavusError('INVALID_PROMPT', 'System prompt Naya tidak valid.', 500);
+  if (!prompt.startsWith('Kamu adalah Naia')) throw new TavusError('INVALID_PROMPT', 'System prompt Naia tidak valid.', 500);
   return prompt;
 }
 
@@ -107,12 +107,12 @@ export function makeTavusClient({
     palCreationAttempted = true;
     if (usingGemini && !gemini.apiKey?.trim()) throw new TavusError('GEMINI_KEY_REQUIRED', 'GEMINI_API_KEY belum diatur.', 503);
     const data = await request('POST', '/v2/pals', {
-      pal_name: usingGemini ? 'Naya Gemini' : 'Naya MVP Test',
+      pal_name: usingGemini ? 'Naia Gemini' : 'Naia MVP Test',
       system_prompt: systemPrompt,
       pipeline_mode: 'full',
       default_face_id: FACE_ID,
       languages: ['id'],
-      greeting: 'Hai, aku Naya. Senang kamu mampir.',
+      greeting: 'Hai, aku Naia. Senang kamu mampir.',
       dynamic_greeting: false,
       layers: {
         stt: { stt_engine: 'tavus-auto' },
@@ -174,7 +174,7 @@ export function makeTavusClient({
       const geminiByo = usingGemini && llm?.model === (gemini.model || DEFAULT_GEMINI_MODEL) &&
         llm.base_url?.replace(/\/$/, '') === GEMINI_BASE_URL.replace(/\/$/, '');
       if (usingGemini && !hosted && !geminiByo) {
-        throw new TavusError('INVALID_LLM_PAL', 'PAL Naya tidak memakai konfigurasi LLM yang didukung.', 409);
+        throw new TavusError('INVALID_LLM_PAL', 'PAL Naia tidak memakai konfigurasi LLM yang didukung.', 409);
       }
       console.log('Tavus PAL ready');
       return existingId;
@@ -194,7 +194,7 @@ export function makeTavusClient({
     try { data = await request('POST', '/v2/conversations', {
       pal_id: palId,
       face_id: faceId,
-      conversation_name: mode === 'naya' ? (usingGemini ? 'Naya Gemini Test' : 'Naya MyNaiA') : 'Dr. Paws MyNaiA',
+      conversation_name: mode === 'naya' ? (usingGemini ? 'Naia Gemini Test' : 'Naia MyNaiA') : 'Dr. Paws MyNaiA',
       conversational_context: mode === 'naya' ? (conversationalContext ? `${MEMORY_CONTEXT}\n${conversationalContext}` : MEMORY_CONTEXT) : conversationalContext,
       dynamic_greeting: true,
       properties: {

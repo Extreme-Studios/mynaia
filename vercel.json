@@ -19,6 +19,7 @@
     { "source": "/api/conversations", "destination": "/api/handler?route=conversations" },
     { "source": "/api/conversations/:id/end", "destination": "/api/handler?route=end&id=:id" },
     { "source": "/api/conversations/:id/status", "destination": "/api/handler?route=conversation-status&id=:id" },
+    { "source": "/naia", "destination": "/index.html" },
     { "source": "/naya", "destination": "/index.html" },
     { "source": "/dr-paws", "destination": "/index.html" }
   ]

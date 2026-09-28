@@ -2,11 +2,11 @@
 
 ## Tujuan dan status
 
-Membuktikan Naya sebagai AI human yang benar-benar bergerak, mendengar, dan berbicara di browser melalui Tavus CVI. Pada uji awal Codex, ruang panggilan terbuka di Chrome tetapi pengujian berhenti pada layar izin perangkat. **Setelah itu pengguna melaporkan human test berhasil secara fungsional:** microphone, percakapan dua arah realtime, gerak Face, blink, lip-sync, head movement, dan Bahasa Indonesia bekerja. Berdasarkan laporan pengguna, **MILESTONE 2: PASSED secara fungsional**. Penilaian kualitas visual/audio secara rinci tetap milik penguji manusia; laporan ini bukan observasi langsung Codex.
+Membuktikan Naia sebagai AI human yang benar-benar bergerak, mendengar, dan berbicara di browser melalui Tavus CVI. Pada uji awal Codex, ruang panggilan terbuka di Chrome tetapi pengujian berhenti pada layar izin perangkat. **Setelah itu pengguna melaporkan human test berhasil secara fungsional:** microphone, percakapan dua arah realtime, gerak Face, blink, lip-sync, head movement, dan Bahasa Indonesia bekerja. Berdasarkan laporan pengguna, **MILESTONE 2: PASSED secara fungsional**. Penilaian kualitas visual/audio secara rinci tetap milik penguji manusia; laporan ini bukan observasi langsung Codex.
 
 ## Implementasi
 
-- Backend `app/backend/tavus.mjs` memuat bagian prompt runtime dari `character/system-prompt.md`, membuat PAL `Naya MVP Test` pada `POST /v2/pals`, memverifikasi PAL existing lewat `GET /v2/pals/{id}`, dan membuat/menutup conversation melalui endpoint resmi. Request memakai `x-api-key` hanya di backend. Error Tavus dikembalikan dalam bentuk aman tanpa body atau header rahasia.
+- Backend `app/backend/tavus.mjs` memuat bagian prompt runtime dari `character/system-prompt.md`, membuat PAL `Naia MVP Test` pada `POST /v2/pals`, memverifikasi PAL existing lewat `GET /v2/pals/{id}`, dan membuat/menutup conversation melalui endpoint resmi. Request memakai `x-api-key` hanya di backend. Error Tavus dikembalikan dalam bentuk aman tanpa body atau header rahasia.
 - PAL memakai `pipeline_mode: full`, stock Face Anna `rc9cff32ceba`, `languages: ["id"]`, greeting singkat, Sparrow-2, patience high, interruptibility medium, dan idle engagement off. Ini konfigurasi awal yang perlu diuji kualitasnya pada sesi nyata.
 - `TAVUS_PAL_ID` menang atas state lokal. Jika kosong, PAL dibuat sekali dan ID disimpan di `app/backend/.naya-pal.json`, tanpa API key. PAL yang dibuat dalam uji ini: `p1be7dd26adf`. Concurrent Start dilindungi di frontend dan backend. Jika hasil pembuatan PAL tidak pasti, server tidak mencoba membuat lagi otomatis pada proses yang sama.
 - Browser menerima hanya conversation ID, URL, dan status. URL resmi Tavus dibuka dalam iframe dengan izin media sesuai panduan Tavus. UI host menyediakan Start, End, Ready, Connecting, Connected (artinya halaman ruang termuat), Ended, dan Error. Indikator Listening serta kontrol microphone yang sebenarnya berada di iframe Tavus; host tidak mengklaim sudah mendengar dari event iframe load.
@@ -26,8 +26,8 @@ Localhost dapat memakai izin media untuk development. Hosting produksi memerluka
 
 - `npm run check`: PASS.
 - `npm test`: 9/9 test mock PASS; tidak memanggil Tavus.
-- `GET /v2/pals`: HTTP 200; autentikasi valid. Sebelum pembuatan, tidak ada PAL bernama Naya pada akun.
-- PAL Naya dibuat satu kali, ID `p1be7dd26adf`, dan disimpan lokal. Stock Face Anna `rc9cff32ceba`.
+- `GET /v2/pals`: HTTP 200; autentikasi valid. Sebelum pembuatan, tidak ada PAL bernama Naia pada akun.
+- PAL Naia dibuat satu kali, ID `p1be7dd26adf`, dan disimpan lokal. Stock Face Anna `rc9cff32ceba`.
 - Satu conversation nyata dibuat, ID `cdc1138341c64476`, URL resmi diterima dan dibuka di iframe aplikasi lokal. `GET /v2/conversations/{id}` kemudian mengembalikan HTTP 200 dengan status `ended` setelah tombol **Akhiri**. Backend mencatat PAL ready, conversation created, dan conversation ended tanpa secret.
 - Chrome mencapai layar `Daily | Get ready for your call` lalu layar “Allow camera and microphone access”. Penguji belum masuk ke ruang aktif. Log browser mencatat `Devices Error (No Camera): NotFoundError: Requested device not found`. Tidak ada error konsol kritis lain yang terlihat pada pemeriksaan; error media ini tetap menghalangi uji percakapan.
 - Microphone, tampilan stock Face saat panggilan, respons suara, gerak, dan kualitas visual/audio: **PENDING HUMAN TEST**. Iframe termuat tidak membuktikan hal-hal tersebut.

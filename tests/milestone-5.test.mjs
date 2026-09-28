@@ -60,11 +60,11 @@ test('routes home dan mode tersedia pada server lokal tanpa membuat sesi', async
   await once(server, 'listening');
   try {
     const base = `http://127.0.0.1:${server.address().port}`;
-    for (const route of ['/', '/naya', '/dr-paws']) {
+    for (const route of ['/', '/naia', '/naya', '/dr-paws']) {
       const response = await fetch(base + route);
       assert.equal(response.status, 200);
       const html = await response.text();
-      assert.match(html, /href="\/naya"/);
+      assert.match(html, /href="\/naia"/);
       assert.match(html, /href="\/dr-paws"/);
     }
   } finally { server.closeAllConnections(); server.close(); await once(server, 'close'); }

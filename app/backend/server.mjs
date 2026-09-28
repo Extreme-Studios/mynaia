@@ -235,7 +235,7 @@ export function createNayaServer({ client: injectedClient, gemini = geminiConfig
         return;
       }
 
-      const file = request.method === 'GET' ? files.get(path === '/naya' || path === '/dr-paws' ? '/' : path) : undefined;
+      const file = request.method === 'GET' ? files.get(['/naia', '/naya', '/dr-paws'].includes(path) ? '/' : path) : undefined;
       if (request.method === 'GET' && path === '/daily-esm.js') {
         const body = await readFile(join(root, 'node_modules', '@daily-co', 'daily-js', 'dist', 'daily-esm.js'));
         response.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
@@ -245,6 +245,12 @@ export function createNayaServer({ client: injectedClient, gemini = geminiConfig
       if (request.method === 'GET' && path === '/gsap.min.js') {
         const body = await readFile(join(root, 'node_modules', 'gsap', 'dist', 'gsap.min.js'));
         response.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
+        response.end(body);
+        return;
+      }
+      if (request.method === 'GET' && /^\/cinematic(?:-[A-Z0-9]+)?\.js$/.test(path)) {
+        const body = await readFile(join(root, 'public', path.slice(1)));
+        response.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-cache' });
         response.end(body);
         return;
       }

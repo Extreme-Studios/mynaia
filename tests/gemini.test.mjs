@@ -46,7 +46,7 @@ test('PAL Gemini dibuat sekali dengan Face lama, state dan log tanpa key', async
     assert.equal(await client.getOrCreateNayaPal(), 'p-gemini');
     assert.equal(calls.length, 1);
     const body = JSON.parse(calls[0].options.body);
-    assert.equal(body.pal_name, 'Naya Gemini');
+    assert.equal(body.pal_name, 'Naia Gemini');
     assert.equal(body.layers.llm.model, 'gemini-3.8-flash');
     assert.equal(body.layers.llm.base_url, GEMINI_BASE_URL);
     assert.equal(body.layers.llm.extra_body.reasoning_effort, 'low');
