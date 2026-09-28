@@ -2,6 +2,22 @@ const $ = (selector) => document.querySelector(selector);
 const make = (tag, text = '', className = '') => { const node = document.createElement(tag); node.textContent = text; if (className) node.className = className; return node; };
 const date = (value) => value ? new Date(value).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
 let dashboard, templates, selectedDetail;
+const verificationLabel = (status) => ({ AI_PRELIMINARY: 'BELUM DIVERIFIKASI PROFESIONAL',
+  PROFESSIONAL_REVIEWED: 'Telah Ditinjau Profesional', PROFESSIONAL_CONFIRMED: 'Telah Dikonfirmasi Profesional',
+  PROFESSIONAL_REVISED: 'Telah Direvisi Profesional' })[status] || 'BELUM DIVERIFIKASI PROFESIONAL';
+const hypothesisStatusLabel = (status) => ({ possible: 'Mungkin; perlu verifikasi',
+  insufficient_evidence: 'Bukti belum cukup', not_supported: 'Tidak didukung dalam sesi ini' })[status] || 'Bukti belum cukup';
+function evidenceLinks(container, items = []) {
+  for (const item of items) {
+    const line = make('p', (item.excerpts || []).join(' · ') || 'Lihat transkrip');
+    for (const turn of item.evidence_turns || []) {
+      const link = make('a', `Bukti #${turn}`, 'evidence'); link.href = `#turn-${turn}`;
+      link.addEventListener('click', () => { const disclosure = document.querySelector('#detail .transcript')?.closest('details'); if (disclosure) disclosure.open = true; });
+      line.append(link);
+    }
+    container.append(line);
+  }
+}
 
 async function api(action, { id, method = 'GET', body } = {}) {
   const query = new URLSearchParams({ action, ...(id ? { id } : {}) });
@@ -121,13 +137,25 @@ async function showSession(id) {
     const a = analysis.result;
     box.append(make('h3', 'Analisis observasi (AI)'));
     box.append(make('p', a.session_summary));
+    box.append(make('h3', 'Kesimpulan & Impresi Sementara'));
+    box.append(make('p', 'BELUM DIVERIFIKASI PROFESIONAL', 'verification preliminary'));
+    box.append(make('p', a.overall_impression || 'Belum cukup data untuk membentuk hipotesis spesifik.'));
+    for (const pattern of a.observed_patterns || []) box.append(make('p', `Pola: ${pattern}`));
+    for (const hypothesis of a.working_hypotheses || []) {
+      box.append(make('h4', `${hypothesis.label} · ${hypothesisStatusLabel(hypothesis.status)}`));
+      box.append(make('p', hypothesis.rationale));
+      box.append(make('strong', 'Bukti pendukung dari laporan anak')); evidenceLinks(box, hypothesis.supporting_evidence);
+      if (hypothesis.counter_evidence?.length) { box.append(make('strong', 'Bukti yang tidak sejalan')); evidenceLinks(box, hypothesis.counter_evidence); }
+      for (const missing of hypothesis.missing_information || []) box.append(make('p', `Data belum ada: ${missing}`));
+      for (const alternative of hypothesis.alternative_explanations || []) box.append(make('p', `Alternatif: ${alternative}`));
+    }
     for (const domain of a.domains) {
       box.append(make('h4', `${domain.domain} · ${domain.coverage}`));
       for (const item of domain.observations) {
         const line = make('p', item.text + ' ');
         for (const turn of item.evidence_turns) {
           const link = make('a', `Bukti #${turn}`, 'evidence'); link.href = `#turn-${turn}`;
-          link.addEventListener('click', () => { const transcriptPanel = box.querySelector('details'); if (transcriptPanel) transcriptPanel.open = true; });
+          link.addEventListener('click', () => { const transcriptPanel = box.querySelector('.transcript')?.closest('details'); if (transcriptPanel) transcriptPanel.open = true; });
           line.append(link);
         }
         box.append(line);
@@ -160,7 +188,14 @@ async function showSession(id) {
 function drawReport(box, data) {
   const report = data.report, content = report.content;
   box.append(make('h3', `Laporan ${report.status.toUpperCase()} · revisi ${report.version}`));
+  box.append(make('p', verificationLabel(content.verification_status), `verification ${content.verification_status === 'AI_PRELIMINARY' || !content.verification_status ? 'preliminary' : 'reviewed'}`));
   box.append(make('p', content.disclaimer));
+  const sources = content.information_sources || {};
+  const sourceLabels = [['child_self_report','Laporan anak'],['parent_information','Informasi orang tua'],
+    ['teacher_information','Informasi guru'],['professional_observation','Observasi profesional'],
+    ['ai_conversation_observation','Observasi percakapan AI']];
+  box.append(make('h4', 'Sumber informasi'));
+  for (const [key, label] of sourceLabels) box.append(make('p', `${label}: ${sources[key] || 'Belum tersedia.'}`));
   const form = make('form', '', 'report-form');
   const grid = make('div', '', 'report-grid');
   const field = (label, value, rows = 4) => {
@@ -168,6 +203,8 @@ function drawReport(box, data) {
   };
   const purpose = field('Tujuan sesi', content.purpose, 2);
   const summary = field('Ringkasan AI (boleh dikoreksi)', content.summary);
+  const conclusion = field('Kesimpulan & Impresi Klinis Sementara (boleh dikoreksi)', content.conclusion || 'Belum cukup data untuk membentuk hipotesis spesifik.');
+  for (const pattern of content.patterns || []) grid.append(make('p', `Pola teramati: ${pattern}`));
   const insufficient = field('Belum cukup tergali (satu per baris)', (content.insufficient || []).join('\n'), 3);
   const followUp = field('Topik tindak lanjut (satu per baris)', (content.follow_up || []).join('\n'), 3);
   const notes = field('Catatan / interpretasi profesional (terpisah dari hasil AI)', report.professional_notes, 5);
@@ -179,6 +216,32 @@ function drawReport(box, data) {
     const remove = make('label', ' Hapus observasi ini'); const checkbox = make('input'); checkbox.type = 'checkbox'; remove.prepend(checkbox); wrapper.append(remove);
     form.append(wrapper); edits.push({ item, input, checkbox });
   }
+  form.append(make('h4', 'Hipotesis yang Perlu Diverifikasi'));
+  const hypothesisEdits = [];
+  if (!(content.working_hypotheses || []).length) form.append(make('p', 'Belum cukup data untuk membentuk hipotesis spesifik.'));
+  for (const item of content.working_hypotheses || []) {
+    const wrapper = make('div', '', 'hypothesis-review');
+    wrapper.append(make('strong', `${item.label} · ${hypothesisStatusLabel(item.status)}`), make('p', item.rationale));
+    wrapper.append(make('strong', 'Bukti pendukung')); evidenceLinks(wrapper, item.supporting_evidence);
+    if (item.counter_evidence?.length) { wrapper.append(make('strong', 'Bukti yang tidak sejalan')); evidenceLinks(wrapper, item.counter_evidence); }
+    wrapper.append(make('p', `Data belum ada: ${(item.missing_information || []).join('; ') || 'Perlu penggalian lanjutan.'}`));
+    wrapper.append(make('p', `Alternatif: ${(item.alternative_explanations || []).join('; ') || 'Belum dicatat.'}`));
+    const decisionLabel = make('label', 'Keputusan reviewer'); const decision = make('select');
+    for (const [value, label] of [['pending','Belum diputuskan'],['accept_for_assessment','Terima untuk asesmen lanjut'],
+      ['revise','Revisi'],['reject','Tolak'],['insufficient_evidence','Bukti tidak cukup']]) decision.add(new Option(label, value));
+    decision.value = item.professional_review?.decision || 'pending'; decisionLabel.append(decision);
+    const noteLabel = make('label', 'Catatan profesional'); const note = make('textarea'); note.rows = 2;
+    note.value = item.professional_review?.note || ''; noteLabel.append(note);
+    const labelField = make('label', 'Label revisi (jika memilih Revisi)'); const revisedLabel = make('input');
+    revisedLabel.value = item.professional_review?.revised_label || ''; labelField.append(revisedLabel);
+    const rationaleField = make('label', 'Alasan revisi (jika memilih Revisi)'); const revisedRationale = make('textarea');
+    revisedRationale.rows = 2; revisedRationale.value = item.professional_review?.revised_rationale || ''; rationaleField.append(revisedRationale);
+    wrapper.append(decisionLabel, noteLabel, labelField, rationaleField); form.append(wrapper);
+    hypothesisEdits.push({ item, decision, note, revisedLabel, revisedRationale });
+  }
+  const confirmLabel = make('label', 'Saya telah meninjau seluruh laporan dan mengonfirmasi redaksi profesional ini; ini bukan diagnosis otomatis.', 'confirm-review');
+  const confirm = make('input'); confirm.type = 'checkbox'; confirmLabel.prepend(confirm);
+  if (report.status !== 'draft') form.append(confirmLabel);
   const actions = make('div', '', 'report-actions');
   for (const [status, label] of [['draft','Simpan draf'], ['reviewed','Tandai reviewed'], ['final','Finalisasi']]) {
     if (status === 'final' && report.status === 'draft') continue;
@@ -187,16 +250,18 @@ function drawReport(box, data) {
       try {
         const lines = (value) => value.split('\n').map((s) => s.trim()).filter(Boolean);
         await api('report', { id: data.session.id, method: 'POST', body: { version: report.version, status,
+          confirmProfessional: status === 'final' && confirm.checked,
           professionalNotes: notes.value, content: { purpose: purpose.value, summary: summary.value,
-            insufficient: lines(insufficient.value), follow_up: lines(followUp.value),
+            conclusion: conclusion.value, insufficient: lines(insufficient.value), follow_up: lines(followUp.value),
+            working_hypotheses: hypothesisEdits.map(({ item, decision, note, revisedLabel, revisedRationale }) => ({ ...item,
+              professional_review: { decision: decision.value, note: note.value,
+                revised_label: revisedLabel.value, revised_rationale: revisedRationale.value } })),
             observations: edits.filter((e) => !e.checkbox.checked).map((e) => ({ ...e.item, text: e.input.value })) } } });
         notice('Laporan tersimpan.'); await refresh(); await showSession(data.session.id);
       } catch (error) { notice(error.message); }
     }); actions.append(button);
   }
-  if (['reviewed','final'].includes(report.status)) {
-    const pdf = make('a', 'Unduh PDF', 'secondary'); pdf.href = `/api/dr-paws/assessment?action=pdf&id=${encodeURIComponent(data.session.id)}`; actions.append(pdf);
-  }
+  const pdf = make('a', 'Unduh PDF', 'secondary'); pdf.href = `/api/dr-paws/assessment?action=pdf&id=${encodeURIComponent(data.session.id)}`; actions.append(pdf);
   form.append(actions); box.append(form);
   if (data.revisions.length) box.append(make('p', `Riwayat revisi: ${data.revisions.map((r) => `v${r.version} ${r.previous_status}`).join(' · ')}`, 'muted'));
 }

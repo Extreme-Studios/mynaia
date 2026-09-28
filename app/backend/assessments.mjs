@@ -7,7 +7,7 @@ import { redactSensitive } from './transcript.mjs';
 const eq = (value) => `eq.${value}`;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export const CONSENT_VERSION = 'dr-paws-assessment-v1';
-export const REPORT_DISCLAIMER = 'Hasil ini merupakan ringkasan berbasis percakapan dengan AI dan bukan diagnosis psikologis atau medis.';
+export const REPORT_DISCLAIMER = 'Impresi ini berasal dari satu percakapan AI yang terbatas dan bukan diagnosis psikologis atau medis; keputusan klinis memerlukan penilaian profesional dan informasi dari sumber lain.';
 const now = () => new Date().toISOString();
 const clean = (value, max = 2000) => redactSensitive(String(value || '').trim()).slice(0, max);
 
@@ -42,6 +42,15 @@ export function draftReport(analysis, session, subject) {
       template: session.template_snapshot.name, template_version: session.template_version },
     purpose: session.template_snapshot.purpose,
     summary: analysis.session_summary || 'Belum cukup informasi.',
+    conclusion: analysis.overall_impression || 'Belum cukup data untuk membentuk hipotesis spesifik.',
+    patterns: analysis.observed_patterns || [],
+    working_hypotheses: (analysis.working_hypotheses || []).map((item) => ({ ...item,
+      professional_review: { decision: 'pending', note: '', revised_label: '', revised_rationale: '' } })),
+    information_sources: analysis.information_sources || { child_self_report: 'Ada: transkrip anak.',
+      ai_conversation_observation: 'Ada: percakapan AI.', parent_information: 'Belum tersedia.',
+      teacher_information: 'Belum tersedia.', professional_observation: 'Belum tersedia.' },
+    verification_status: 'AI_PRELIMINARY',
+    professional_revision: false,
     domains: analysis.domains,
     strengths: analysis.strengths_observed,
     observations: analysis.domains.flatMap((d) => d.observations.map((o) => ({ domain: d.domain, ...o }))),
@@ -208,7 +217,7 @@ export function makeAssessmentService({ store, subjects = makeSubjectService({ s
       transcript_status: conversation[0].transcript_status, memory_status: conversation[0].memory_status },
     transcript, analysis: analysis[0] || null, report: report[0] || null, revisions };
   }
-  async function saveReport(id, { content, professionalNotes, status, version } = {}) {
+  async function saveReport(id, { content, professionalNotes, status, version, confirmProfessional = false } = {}) {
     await requireSession(id);
     const previous = (await store.select('assessment_reports', scoped({ session_id: eq(id) }), '*'))[0];
     if (!previous) throw new AssessmentError('REPORT_NOT_READY', 'Laporan belum tersedia.', 409);
@@ -219,7 +228,7 @@ export function makeAssessmentService({ store, subjects = makeSubjectService({ s
     if (!content || typeof content !== 'object' || Array.isArray(content) || JSON.stringify(content).length > 30000)
       throw new AssessmentError('REPORT_INVALID', 'Isi laporan tidak valid.');
     // Only editable prose is accepted. Evidence and identity remain generated from the verified analysis.
-    const editable = ['summary','purpose','insufficient','follow_up'];
+    const editable = ['summary','purpose','conclusion','insufficient','follow_up'];
     const next = { ...previous.content };
     for (const field of editable) {
       if (field in content) next[field] = Array.isArray(next[field]) ?
@@ -234,12 +243,47 @@ export function makeAssessmentService({ store, subjects = makeSubjectService({ s
         return { ...source, text: clean(o.text, 500) };
       }).filter((o) => o.text);
     }
+    if ('working_hypotheses' in content) {
+      if (!Array.isArray(content.working_hypotheses) || content.working_hypotheses.length !== (previous.content.working_hypotheses || []).length)
+        throw new AssessmentError('REPORT_INVALID', 'Jumlah hipotesis tidak valid.');
+      next.working_hypotheses = (previous.content.working_hypotheses || []).map((original, index) => {
+        const submitted = content.working_hypotheses[index];
+        if (!submitted || submitted.label !== original.label || JSON.stringify(submitted.supporting_evidence) !== JSON.stringify(original.supporting_evidence))
+          throw new AssessmentError('EVIDENCE_INVALID', 'Bukti hipotesis tidak boleh diubah.');
+        const review = submitted.professional_review || {};
+        const decision = review.decision || 'pending';
+        if (!['pending','accept_for_assessment','revise','reject','insufficient_evidence'].includes(decision))
+          throw new AssessmentError('REPORT_INVALID', 'Keputusan hipotesis tidak valid.');
+        const revisedLabel = decision === 'revise' ? clean(review.revised_label, 180) : '';
+        const revisedRationale = decision === 'revise' ? clean(review.revised_rationale, 700) : '';
+        if (decision === 'revise' && (!revisedLabel || !revisedRationale))
+          throw new AssessmentError('REPORT_INVALID', 'Isi label dan alasan revisi hipotesis.');
+        return { ...original, professional_review: { decision, note: clean(review.note, 1200),
+          revised_label: revisedLabel, revised_rationale: revisedRationale } };
+      });
+    }
+    if (status !== 'draft' && next.working_hypotheses?.some((item) => !item.professional_review?.decision || item.professional_review.decision === 'pending'))
+      throw new AssessmentError('REVIEW_REQUIRED', 'Tinjau setiap hipotesis sebelum menandai laporan reviewed atau final.', 409);
     const notes = clean(professionalNotes, 8000);
+    const priorHypotheses = previous.content.working_hypotheses || [];
+    const interpretationChanged = next.conclusion !== previous.content.conclusion ||
+      next.summary !== previous.content.summary || JSON.stringify(next.observations) !== JSON.stringify(previous.content.observations) ||
+      next.working_hypotheses?.some((hypothesis) => ['revise','reject','insufficient_evidence'].includes(hypothesis.professional_review?.decision)) ||
+      next.working_hypotheses?.some((hypothesis, index) => JSON.stringify(hypothesis.professional_review) !== JSON.stringify(priorHypotheses[index]?.professional_review) &&
+        hypothesis.professional_review?.decision === 'revise');
+    next.professional_revision = previous.content.professional_revision === true || Boolean(interpretationChanged);
+    const reviewStatus = next.professional_revision ?
+      'PROFESSIONAL_REVISED' : 'PROFESSIONAL_REVIEWED';
+    const nextStatus = previous.status === 'final' && (JSON.stringify(next) !== JSON.stringify(previous.content) || notes !== previous.professional_notes) ? 'draft' : status;
+    if (confirmProfessional === true && (status !== 'final' || nextStatus !== 'final' || !['reviewed','final'].includes(previous.status)))
+      throw new AssessmentError('REVIEW_REQUIRED', 'Konfirmasi profesional memerlukan laporan yang sudah ditinjau.', 409);
+    next.verification_status = nextStatus === 'draft' ? 'AI_PRELIMINARY' :
+      confirmProfessional === true ? 'PROFESSIONAL_CONFIRMED' :
+      previous.content.verification_status === 'PROFESSIONAL_CONFIRMED' && !interpretationChanged ? 'PROFESSIONAL_CONFIRMED' : reviewStatus;
     const changed = JSON.stringify(next) !== JSON.stringify(previous.content) || notes !== previous.professional_notes || status !== previous.status;
     if (!changed) return previous;
     await store.upsert('assessment_report_revisions', { session_id: id, owner_user_id: userId, version: previous.version,
       previous_status: previous.status, previous_content: previous.content, previous_professional_notes: previous.professional_notes }, 'session_id,version');
-    const nextStatus = previous.status === 'final' && (JSON.stringify(next) !== JSON.stringify(previous.content) || notes !== previous.professional_notes) ? 'draft' : status;
     const updated = { content: next, professional_notes: notes, status: nextStatus, version: previous.version + 1,
       reviewed_at: nextStatus === 'reviewed' ? now() : previous.reviewed_at,
       finalized_at: nextStatus === 'final' ? now() : null, updated_at: now() };

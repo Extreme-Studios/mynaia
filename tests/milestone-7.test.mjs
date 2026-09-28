@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
-import { makeAssessmentService, validateTemplate, buildInterviewContext, AssessmentError, REPORT_DISCLAIMER } from '../app/backend/assessments.mjs';
+import { makeAssessmentService, validateTemplate, buildInterviewContext, draftReport, AssessmentError, REPORT_DISCLAIMER } from '../app/backend/assessments.mjs';
 import { validateAssessmentAnalysis } from '../app/backend/assessment-analysis.mjs';
-import { renderAssessmentPdf } from '../app/backend/assessment-pdf.mjs';
+import { renderAssessmentPdf, verificationBanner } from '../app/backend/assessment-pdf.mjs';
 import { Readable } from 'node:stream';
 import { createVercelHandler } from '../api/handler.js';
 import { sessionToken } from '../app/backend/access-auth.mjs';
@@ -79,6 +79,44 @@ test('analisis menolak observasi tanpa bukti giliran anak dan label diagnostik',
   assert.deepEqual(validFlag.safety_review.evidence_turns, [1]);
 });
 
+test('impresi sementara membutuhkan bukti anak, mempertahankan kontra dan alternatif, serta menolak kepastian palsu', () => {
+  const messages = [
+    { position: 1, role: 'user', content: 'Aku sering susah fokus saat tugas panjang.' },
+    { position: 2, role: 'assistant', content: 'Kapan terasa lebih mudah?' },
+    { position: 3, role: 'user', content: 'Kalau menggambar aku bisa fokus lama.' },
+  ];
+  const hypothesis = { label: 'Kesulitan perhatian dalam tugas sekolah', status: 'possible',
+    rationale: 'Laporan anak menunjukkan kesulitan pada tugas panjang, tetapi kemampuan fokus dapat muncul saat menggambar.',
+    supporting_evidence: [{ evidence_turns: [1, 3] }], counter_evidence: [{ evidence_turns: [3] }],
+    missing_information: ['Informasi orang tua dan guru tentang situasi lain'],
+    alternative_explanations: ['Kelelahan', 'Minat pada tugas'], professional_verification_required: false };
+  const input = { session_summary: 'Anak bercerita tentang tugas sekolah.', verification_status: 'PROFESSIONAL_CONFIRMED',
+    overall_impression: 'Temuan sesi dapat konsisten dengan tantangan perhatian yang masih perlu ditelaah.',
+    observed_patterns: ['Tugas panjang terasa sulit.'], working_hypotheses: [hypothesis], domains: [], strengths_observed: [],
+    safety_review: { recommended: false, evidence_turns: [] } };
+  const strong = validateAssessmentAnalysis(input, messages, template);
+  assert.equal(strong.working_hypotheses[0].status, 'possible');
+  assert.deepEqual(strong.working_hypotheses[0].supporting_evidence[0].evidence_turns, [1, 3]);
+  assert.equal(strong.working_hypotheses[0].supporting_evidence[0].excerpts[0], messages[0].content);
+  assert.deepEqual(strong.working_hypotheses[0].counter_evidence[0].evidence_turns, [3]);
+  assert.deepEqual(strong.working_hypotheses[0].alternative_explanations, ['Kelelahan', 'Minat pada tugas']);
+  assert.equal(strong.working_hypotheses[0].professional_verification_required, true);
+  assert.equal('verification_status' in strong, false);
+  assert.equal(strong.information_sources.teacher_information, 'Belum tersedia.');
+  assert.equal(draftReport(strong, { created_at: new Date().toISOString(), planned_duration_minutes: 5,
+    template_snapshot: template, template_version: 1 }, { display_name: 'Bimo' }).verification_status, 'AI_PRELIMINARY');
+  const weak = validateAssessmentAnalysis({ ...input, working_hypotheses: [
+    { ...hypothesis, supporting_evidence: [{ evidence_turns: [1, 2, 999] }] },
+    { ...hypothesis, label: 'Tanpa bukti', supporting_evidence: [{ evidence_turns: [2] }] },
+    { ...hypothesis, label: 'Anak pasti mengalami ADHD.' },
+  ] }, messages, template);
+  assert.equal(weak.working_hypotheses.length, 1);
+  assert.equal(weak.working_hypotheses[0].status, 'insufficient_evidence');
+  assert.deepEqual(weak.working_hypotheses[0].supporting_evidence[0].evidence_turns, [1]);
+  assert.equal(validateAssessmentAnalysis({ ...input, overall_impression: 'Diagnosis anak adalah ADHD.', working_hypotheses: [] }, messages, template)
+    .overall_impression, 'Belum cukup data untuk membentuk hipotesis spesifik.');
+});
+
 test('persetujuan per anak diwajibkan sebelum sesi; retry memproses transkrip lama sekali dan laporan direvisi', async () => {
   const store = fakeStore(); let analyzes = 0; let tavusCreates = 0;
   const service = makeAssessmentService({ store, subjects, analyze: async () => {
@@ -123,6 +161,64 @@ test('persetujuan per anak diwajibkan sebelum sesi; retry memproses transkrip la
   const edited = await service.saveReport(started.id, { version: 3, status: 'final', content: { summary: 'Ringkasan dikoreksi.' }, professionalNotes: 'Ditinjau wali.' });
   assert.equal(edited.status, 'draft');
   assert.equal(store.tables.assessment_report_revisions.length, 3);
+});
+
+test('reviewer dapat menerima, merevisi, menolak, dan menandai bukti kurang tanpa mengubah sitasi; konfirmasi hanya eksplisit', async () => {
+  const store = fakeStore();
+  store.tables.conversation_messages.push({ id: randomUUID(), session_id: conversationId, position: 3,
+    role: 'user', content: 'Kalau menggambar aku fokus lama.' });
+  const analysis = validateAssessmentAnalysis({ session_summary: 'Anak menceritakan tugas.',
+    overall_impression: 'Perlu menelaah pengalaman belajar lebih lanjut.', observed_patterns: ['Tugas panjang terasa sulit.'],
+    working_hypotheses: [{ label: 'Kesulitan perhatian pada tugas tertentu', status: 'possible',
+      rationale: 'Anak melaporkan kesulitan pada tugas tertentu.', supporting_evidence: [{ evidence_turns: [1, 3] }],
+      counter_evidence: [{ evidence_turns: [3] }], missing_information: ['Informasi guru'],
+      alternative_explanations: ['Minat pada tugas'], professional_verification_required: true }],
+    domains: [], strengths_observed: [], safety_review: { recommended: false, evidence_turns: [] } },
+  store.tables.conversation_messages, template);
+  const service = makeAssessmentService({ store, subjects, analyze: async () => analysis });
+  await service.giveConsent({ subjectId: childA, actor: 'Wali', accepted: true });
+  const prepared = await service.prepare({ subjectId: childA, templateId });
+  const started = await service.recordStarted('c-test', { subjectId: childA, ...prepared, durationMinutes: 5 });
+  await service.process(started.id);
+  let detail = await service.detail(started.id);
+  assert.equal(detail.report.content.verification_status, 'AI_PRELIMINARY');
+  assert.match(verificationBanner(detail), /BELUM DIVERIFIKASI PROFESIONAL/);
+  const preliminaryPdf = await renderAssessmentPdf(detail);
+  assert.equal(preliminaryPdf.subarray(0, 4).toString(), '%PDF');
+  const original = detail.report.content.working_hypotheses[0];
+  const withDecision = (decision, extra = {}) => ({ ...original,
+    professional_review: { decision, note: 'Ditelaah reviewer.', revised_label: '', revised_rationale: '', ...extra } });
+  await assert.rejects(service.saveReport(started.id, { version: 1, status: 'reviewed', content: {
+    verification_status: 'PROFESSIONAL_CONFIRMED', working_hypotheses: [{ ...original, supporting_evidence: [] }] }, professionalNotes: '' }),
+  (error) => error.code === 'EVIDENCE_INVALID');
+  const accepted = await service.saveReport(started.id, { version: 1, status: 'reviewed',
+    content: { verification_status: 'PROFESSIONAL_CONFIRMED', working_hypotheses: [withDecision('accept_for_assessment')] },
+    professionalNotes: '' });
+  assert.equal(accepted.content.verification_status, 'PROFESSIONAL_REVIEWED');
+  assert.match(verificationBanner(await service.detail(started.id)), /Telah Ditinjau Profesional/);
+  const revised = await service.saveReport(started.id, { version: 2, status: 'reviewed', content: {
+    working_hypotheses: [withDecision('revise', { revised_label: 'Pola belajar yang perlu ditelaah',
+      revised_rationale: 'Perlu data tambahan dari rumah dan sekolah.' })] }, professionalNotes: '' });
+  assert.equal(revised.content.verification_status, 'PROFESSIONAL_REVISED');
+  const rejected = await service.saveReport(started.id, { version: 3, status: 'reviewed',
+    content: { working_hypotheses: [withDecision('reject')] }, professionalNotes: '' });
+  assert.equal(rejected.content.working_hypotheses[0].professional_review.decision, 'reject');
+  const insufficient = await service.saveReport(started.id, { version: 4, status: 'reviewed',
+    content: { working_hypotheses: [withDecision('insufficient_evidence')] }, professionalNotes: '' });
+  assert.equal(insufficient.content.working_hypotheses[0].professional_review.decision, 'insufficient_evidence');
+  await assert.rejects(service.saveReport(started.id, { version: 5, status: 'reviewed', confirmProfessional: true,
+    content: {}, professionalNotes: '' }), (error) => error.code === 'REVIEW_REQUIRED');
+  const final = await service.saveReport(started.id, { version: 5, status: 'final', confirmProfessional: true,
+    content: {}, professionalNotes: '' });
+  assert.equal(final.content.verification_status, 'PROFESSIONAL_CONFIRMED');
+  assert.equal(final.content.working_hypotheses[0].professional_review.decision, 'insufficient_evidence');
+  detail = await service.detail(started.id);
+  assert.match(verificationBanner(detail), /Dikonfirmasi/);
+  assert.equal((await renderAssessmentPdf(detail)).subarray(0, 4).toString(), '%PDF');
+  const reopened = await service.saveReport(started.id, { version: 6, status: 'final',
+    content: { conclusion: 'Kesimpulan dikoreksi oleh profesional.' }, professionalNotes: '' });
+  assert.equal(reopened.status, 'draft');
+  assert.equal(reopened.content.verification_status, 'AI_PRELIMINARY');
 });
 
 test('transkrip kosong menahan draf dan kesalahan analisis dapat dicoba ulang tanpa sesi baru', async () => {
