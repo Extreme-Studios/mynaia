@@ -23,6 +23,7 @@ const files = new Map([
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/controller.mjs', ['controller.mjs', 'text/javascript; charset=utf-8']],
   ['/self-view.mjs', ['self-view.mjs', 'text/javascript; charset=utf-8']],
+  ['/motion.mjs', ['motion.mjs', 'text/javascript; charset=utf-8']],
   ['/manifest.webmanifest', ['manifest.webmanifest', 'application/manifest+json']],
   ['/sw.js', ['sw.js', 'text/javascript; charset=utf-8']],
   ['/icons/icon-192.png', ['icons/icon-192.png', 'image/png']],
@@ -241,6 +242,12 @@ export function createNayaServer({ client: injectedClient, gemini = geminiConfig
         response.end(body);
         return;
       }
+      if (request.method === 'GET' && path === '/gsap.min.js') {
+        const body = await readFile(join(root, 'node_modules', 'gsap', 'dist', 'gsap.min.js'));
+        response.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
+        response.end(body);
+        return;
+      }
       if (!file) {
         json(response, 404, { error: 'Tidak ditemukan.' });
         return;
@@ -271,6 +278,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   const port = Number(process.env.PORT || 3000);
   const gemini = geminiConfig();
   createNayaServer({ gemini }).listen(port, '127.0.0.1', () => {
-    console.log(`MyNaiA Milestone 5: http://127.0.0.1:${port}`);
+    console.log(`MyNaiA: http://127.0.0.1:${port}`);
   });
 }

@@ -1,11 +1,14 @@
 import { createConversationController } from './controller.mjs';
 import { createSelfView } from './self-view.mjs';
+import { startProductMotion, animateVisible, setupPageTransitions } from './motion.mjs';
 
 const $ = (selector) => document.querySelector(selector);
 const mode = location.pathname === '/dr-paws' ? 'dr_paws' : 'naya';
 const isHome = !['/naya', '/dr-paws'].includes(location.pathname);
 const modeName = mode === 'naya' ? 'Naya' : 'Dr. Paws';
 const modeReady = { naya: true, dr_paws: false };
+startProductMotion();
+setupPageTransitions();
 let accessGranted = false;
 let mountedUrl = '';
 let activeId = '';
@@ -27,10 +30,14 @@ $('#settings-mode').textContent = isHome ? 'Beranda' : modeName;
 $('#mode-badge').textContent = mode === 'naya' ? 'AI companion' : 'Teman cerita';
 $('#avatar-mark').textContent = mode === 'naya' ? 'N' : '🐾';
 $('#placeholder-description').textContent = mode === 'naya'
-  ? 'Pilih durasi, lalu mulai saat kamu siap.' : 'Cerita santai bersama Dr. Paws. Mulai saat kamu siap.';
+  ? 'Naya dapat mengingat hal-hal penting dari obrolan sebelumnya.' : 'Teman cerita yang ramah untuk anak. Pilih profil, lalu mulai saat siap.';
+$('#placeholder-title').textContent = mode === 'naya' ? 'Siap ngobrol dengan Naya?' : 'Siap bercerita dengan Dr. Paws?';
+$('#start').textContent = mode === 'naya' ? 'Mulai Ngobrol' : 'Mulai Cerita';
 document.body.dataset.mode = mode;
 document.title = isHome ? 'MyNaiA — Teman AI' : `${modeName} — MyNaiA`;
 $('#subject-panel').hidden = mode !== 'dr_paws' || isHome;
+$('#subject-manage').hidden = mode !== 'dr_paws' || isHome;
+document.querySelector(`.primary-nav a[href="${location.pathname}"]`)?.setAttribute('aria-current', 'page');
 
 function savedDuration() {
   try { const value = localStorage.getItem('mynaia.duration'); return ['3','5','10','20'].includes(value) ? value : '5'; }
@@ -42,8 +49,9 @@ $('#duration-warning').hidden = $('#duration').value !== '20';
 
 function updateSelfViewControl() {
   const compact = selfViewMode === 'compact';
-  $('#self-view-toggle').textContent = compact ? 'Self View: Compact' : 'Self View: Hidden';
+  $('#self-view-toggle').innerHTML = compact ? '◉ <span>Self View</span>' : '◌ <span>Self View</span>';
   $('#self-view-toggle').setAttribute('aria-pressed', String(compact));
+  $('#self-view-toggle').setAttribute('aria-label', compact ? 'Sembunyikan preview kamera' : 'Tampilkan preview kamera');
   room?.setMode(selfViewMode);
 }
 updateSelfViewControl();
@@ -80,6 +88,7 @@ function setAccess(granted) {
   $('#access-form').hidden = granted;
   $('#access-loading').hidden = true;
   if (!granted) setSettings(false);
+  else animateVisible($('#app'));
 }
 
 const api = {
@@ -111,6 +120,14 @@ async function releaseWakeLock() {
 }
 
 function fullscreenActive() { return Boolean(document.fullscreenElement || fullscreenFallback); }
+function friendlyCallError(message = '') {
+  if (/microphone|mikrofon|permission|izin/i.test(message)) return `${modeName} membutuhkan akses mikrofon. Periksa izin browser lalu coba lagi.`;
+  if (/offline|network|fetch|koneksi/i.test(message)) return 'Koneksi terganggu. Periksa internet lalu coba lagi.';
+  if (/PAL|profil|config|konfigurasi/i.test(message)) return `${modeName} belum siap digunakan. Periksa Tavus Engine di Pengaturan.`;
+  if (/kuota|quota|limit|rate|credit|usage/i.test(message)) return 'Sesi belum dapat dimulai saat ini. Periksa penggunaan profil Tavus aktif di Pengaturan.';
+  if (/supabase|penyimpanan|memori/i.test(message)) return 'Ingatan sedang tidak tersedia. Coba lagi sebentar.';
+  return message ? 'Sesi belum dapat dimulai saat ini. Coba lagi sebentar.' : '';
+}
 function updateFullscreen() {
   const active = fullscreenActive();
   $('#app').classList.toggle('app-fullscreen', active);
@@ -133,7 +150,10 @@ function render(state) {
   if (isHome) return;
   const active = Boolean(state.session);
   const pending = state.phase === 'connecting';
+  document.body.classList.toggle('call-active', active);
+  $('#call-view').classList.toggle('in-call', active);
   $('#start').disabled = !state.canStart || !accessGranted || !navigator.onLine || !modeReady[mode] || (mode === 'dr_paws' && !subjectId);
+  $('#start').textContent = state.phase === 'error' ? 'Coba Lagi' : mode === 'naya' ? 'Mulai Ngobrol' : 'Mulai Cerita';
   $('#start').hidden = active || pending;
   $('#end').disabled = !state.canEnd;
   $('#end').hidden = !active;
@@ -145,15 +165,27 @@ function render(state) {
   $('#subject-reset').disabled = active || pending || !subjectId;
   $('#setting-duration').disabled = active || pending;
   $('#status').dataset.state = state.phase;
-  const labels = { ready:'Ready', connecting:'Connecting', connected:'Connected — ruang video terbuka',
-    ended:'Ended', error:'Error' };
-  $('#status-text').textContent = navigator.onLine ? labels[state.phase] || state.phase : 'Koneksi terputus.';
+  const labels = { ready:'Siap', connecting:`Menghubungkan dengan ${modeName}…`, connected:'Ruang percakapan terbuka',
+    ended:'Sesi selesai', error:'Sesi belum dapat dimulai' };
+  $('#status-text').textContent = navigator.onLine ?
+    (active && state.phase === 'error' ? 'Koneksi perlu diperiksa' : labels[state.phase] || state.phase) : 'Koneksi terputus.';
   $('#error').hidden = !state.message || state.phase === 'ended';
-  $('#error').textContent = state.message;
+  $('#error').textContent = state.phase === 'error' ?
+    active ? 'Sesi belum dapat ditutup. Periksa koneksi lalu tekan Akhiri lagi.' : friendlyCallError(state.message) : state.message;
   $('#precall').hidden = active || pending || state.phase === 'ended';
+  $('#placeholder-title').textContent = pending ? `${modeName} sedang bersiap…` :
+    mode === 'naya' ? 'Siap ngobrol dengan Naya?' : 'Siap bercerita dengan Dr. Paws?';
+  const postcallJustOpened = state.phase === 'ended' && $('#postcall').hidden;
   $('#postcall').hidden = state.phase !== 'ended';
-  if (state.phase === 'ended') $('#postcall-text').textContent = state.message ||
-    (mode === 'naya' ? 'Tadi seru ngobrol sama kamu.' : 'Makasih sudah bercerita dengan Dr. Paws.');
+  $('#room-layout').hidden = state.phase === 'ended';
+  $('#call-view .controls').hidden = state.phase === 'ended';
+  $('#mic-hint').hidden = state.phase === 'ended';
+  if (state.phase === 'ended') {
+    $('#postcall-title').textContent = mode === 'naya' ? 'Percakapan selesai.' : 'Ceritanya selesai untuk sekarang.';
+    $('#postcall-text').textContent = state.message?.includes('durasi') ? state.message :
+      mode === 'naya' ? 'Sampai jumpa di obrolan berikutnya.' : 'Terima kasih sudah bercerita bersama Dr. Paws.';
+    if (postcallJustOpened) animateVisible($('#postcall'));
+  }
   if (active && state.session.conversationUrl !== mountedUrl) {
     mountedUrl = state.session.conversationUrl;
     activeId = state.session.conversationId;
@@ -195,7 +227,8 @@ $('#start').addEventListener('click', async () => {
   if (!accessGranted || !modeReady[mode] || !navigator.onLine || (mode === 'dr_paws' && !subjectId)) return;
   if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
     $('#error').hidden = false;
-    $('#error').textContent = `${modeName} membutuhkan akses mikrofon agar bisa mendengar kamu. Buka lewat HTTPS dan periksa izin browser.`;
+    $('#error').textContent = mode === 'naya' ? 'Naya membutuhkan akses mikrofon agar bisa mendengar kamu. Buka lewat HTTPS dan periksa izin browser.' :
+      'Dr. Paws perlu mikrofon supaya bisa mendengar ceritamu. Buka lewat HTTPS dan periksa izin browser.';
     return;
   }
   try {
@@ -211,7 +244,7 @@ $('#start').addEventListener('click', async () => {
 $('#end').addEventListener('click', () => controller.end());
 $('#again').addEventListener('click', () => { location.reload(); });
 $('#mic-help').addEventListener('click', () => {
-  $('#mic-hint').textContent = 'Gunakan ikon mikrofon di dalam video untuk mute atau unmute. Jika izin ditolak, aktifkan mikrofon pada pengaturan situs lalu muat ulang.';
+  $('#mic-hint').textContent = 'Gunakan ikon mikrofon di dalam ruang video untuk mute atau unmute. Jika izin ditolak, aktifkan mikrofon pada pengaturan situs lalu muat ulang.';
   $('#stage').querySelector('iframe')?.focus();
 });
 $('#self-view-toggle').addEventListener('click', () => {
@@ -266,10 +299,31 @@ async function refreshSubjects(preferredId = '') {
   }
   subjectId = data.subjects.some((item) => item.id === preferredId) ? preferredId : data.subjects.length === 1 ? data.subjects[0].id : '';
   select.value = subjectId;
+  const options = $('#subject-options');
+  options.replaceChildren();
+  for (const subject of data.subjects) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'subject-choice';
+    button.dataset.subjectId = subject.id;
+    button.textContent = subject.nickname || subject.display_name;
+    button.setAttribute('aria-pressed', String(subject.id === subjectId));
+    button.addEventListener('click', () => {
+      subjectId = subject.id;
+      select.value = subjectId;
+      for (const choice of options.children) choice.setAttribute('aria-pressed', String(choice === button));
+      render(controller.snapshot());
+    });
+    options.append(button);
+  }
   $('#subject-message').textContent = data.subjects.length ? '' : 'Tambahkan profil sebelum mulai ngobrol.';
   render(controller.snapshot());
 }
-$('#subject-select').addEventListener('change', () => { subjectId = $('#subject-select').value; render(controller.snapshot()); });
+$('#subject-select').addEventListener('change', () => {
+  subjectId = $('#subject-select').value;
+  for (const choice of $('#subject-options').children) choice.setAttribute('aria-pressed', String(choice.dataset.subjectId === subjectId));
+  render(controller.snapshot());
+});
 $('#subject-add-toggle').addEventListener('click', () => { $('#subject-add-form').hidden = !$('#subject-add-form').hidden; });
 $('#subject-add-form').addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -293,6 +347,7 @@ $('#subject-reset').addEventListener('click', async () => {
 function setSettings(open) {
   $('#settings-panel').hidden = !open;
   $('#settings-toggle').setAttribute('aria-expanded', String(open));
+  if (open) animateVisible($('#settings-panel'));
 }
 $('#settings-toggle').addEventListener('click', () => setSettings($('#settings-panel').hidden));
 $('#settings-close').addEventListener('click', () => setSettings(false));
@@ -359,7 +414,7 @@ $('#admin-inspect').addEventListener('click', async () => {
 });
 
 updateOffline();
-apiRequest('/api/access/status').then((data) => {
+apiRequest('/api/access/status', { signal: AbortSignal.timeout?.(10000) }).then((data) => {
   setAccess(!data.required || data.authorized);
   if (!accessGranted) return;
   if (mode === 'dr_paws' && !isHome) refreshSubjects().catch(() => { $('#subject-message').textContent = 'Profil anak belum tersedia.'; });
@@ -378,4 +433,10 @@ apiRequest('/api/access/status').then((data) => {
   setAccess(false);
   $('#access-message').textContent = 'Status akses tidak tersedia. Coba muat ulang.';
 });
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (controller.snapshot().session) return;
+    location.reload();
+  });
+}

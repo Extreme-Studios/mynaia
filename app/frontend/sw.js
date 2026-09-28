@@ -1,5 +1,5 @@
-const CACHE = 'mynaia-static-v9';
-const STATIC = new Set(['/', '/index.html', '/naya', '/dr-paws', '/styles.css', '/app.js', '/controller.mjs', '/self-view.mjs', '/daily-esm.js',
+const CACHE = 'mynaia-static-v10';
+const STATIC = new Set(['/', '/index.html', '/naya', '/dr-paws', '/styles.css', '/app.js', '/controller.mjs', '/self-view.mjs', '/motion.mjs', '/gsap.min.js',
   '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png']);
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll([...STATIC])).then(() => self.skipWaiting()));
@@ -13,7 +13,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
   if (event.request.mode === 'navigate') {
-    event.respondWith(fetch(event.request).catch(async () => (await caches.open(CACHE)).match('/index.html')));
+    event.respondWith(fetch(event.request, { cache: 'no-store' }).catch(async () => (await caches.open(CACHE)).match('/index.html')));
     return;
   }
   if (STATIC.has(url.pathname)) event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request)));

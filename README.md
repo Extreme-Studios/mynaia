@@ -1,6 +1,8 @@
 # Naya Virtual Girl
 
-**Current Milestone: 5 – Product UI / PWA / Multi-Mode**
+**Current Milestone: 6 – Cinematic Product UI; human visual validation required**
+
+Milestone 6 memberi MyNaiA splash sinematik singkat, landing dengan dua karakter, motion GSAP yang menghormati reduced motion, pilihan profil anak berbentuk chip, dan tampilan call/end/settings yang lebih rapi. Jalur Tavus, Supabase, Gemini, serta delapan profil Tavus tetap sama. Seluruh QA pengembangan memakai mock tanpa membuat conversation Tavus. Rincian dan batas validasi di [docs/milestone-6.md](docs/milestone-6.md).
 
 ## Multi-Tavus Profile Engine
 

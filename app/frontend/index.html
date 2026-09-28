@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#111b2c">
+  <meta name="theme-color" content="#0b1020">
   <meta name="description" content="MyNaiA — teman AI untuk ngobrol dan bercerita.">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -11,56 +11,60 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
-  <link rel="stylesheet" href="/styles.css?v=9">
-  <script type="module" src="/app.js?v=9"></script>
+  <link rel="stylesheet" href="/styles.css?v=10">
+  <script defer src="/gsap.min.js"></script>
+  <script type="module" src="/app.js?v=10"></script>
   <title>MyNaiA — Teman AI</title>
 </head>
 <body>
+  <div id="splash" class="splash" role="presentation"><div class="splash-light"></div><div class="splash-content"><div class="splash-emblem">M</div><strong>MyNaiA</strong><p>Teman AI yang mengenal dan mengingatmu.</p></div><button id="skip-splash" type="button" hidden>Lewati</button></div>
   <section id="access-gate" class="access-gate" aria-labelledby="access-title"><div class="access-card"><span class="brand-mark">M</span><h1 id="access-title">Masuk MyNaiA</h1><p id="access-loading">Memeriksa akses…</p><form id="access-form" class="access-form" hidden><label for="access-code">Password akses</label><div><input id="access-code" name="code" type="password" autocomplete="current-password" required><button type="submit">Masuk</button></div><span id="access-message" role="status"></span></form></div></section>
   <main id="app" class="app-shell" hidden>
     <header class="app-header">
       <a class="wordmark" href="/" aria-label="MyNaiA Beranda"><span class="brand-mark">M</span><span>MyNaiA</span></a>
+      <nav class="primary-nav" aria-label="Navigasi utama"><a href="/">Beranda</a><a href="/naya">Naya</a><a href="/dr-paws">Dr. Paws</a></nav>
       <button id="settings-toggle" class="icon-button" type="button" aria-label="Buka pengaturan" aria-expanded="false" aria-controls="settings-panel">⚙</button>
     </header>
 
     <section id="home" class="home-view" aria-labelledby="home-title">
-      <div class="home-copy"><p class="eyebrow">RUANG CERITA DIGITAL</p><h1 id="home-title">MyNaiA</h1><p>Teman AI yang bisa menemani dan mengenalmu.</p></div>
+      <div class="home-copy"><p class="eyebrow">AI COMPANION PLATFORM</p><h1 id="home-title">MyNaiA<span class="hero-period">.</span></h1><p class="hero-tagline">Teman AI yang mengenal dan mengingatmu.</p><p class="hero-description">Percakapan langsung dengan karakter AI yang dapat melanjutkan hubungan dari waktu ke waktu.</p></div>
       <div class="mode-grid">
         <article class="mode-card naya-card">
           <div class="portrait naya-portrait" aria-hidden="true"><span class="portrait-orbit"></span><span class="human-hair"></span><span class="human-face"></span><span class="human-body"></span></div>
-          <div class="card-copy"><span class="card-kicker">PERSONAL COMPANION</span><h2>Naya</h2><p>Teman ngobrol personal yang mengenalmu dari waktu ke waktu.</p><a class="card-cta" href="/naya">Ngobrol dengan Naya <span aria-hidden="true">↗</span></a></div>
+          <div class="card-copy"><span class="card-kicker">01 / PERSONAL COMPANION</span><h2>Naya</h2><p>Teman ngobrol personal yang mengenalmu dari waktu ke waktu.</p><a class="card-cta" href="/naya">Ngobrol dengan Naya <span aria-hidden="true">↗</span></a></div>
         </article>
         <article class="mode-card paws-card">
           <div class="portrait paws-portrait" aria-hidden="true"><span class="portrait-orbit"></span><span class="cat-ear left"></span><span class="cat-ear right"></span><span class="cat-face"><i class="cat-eye left"></i><i class="cat-eye right"></i><i class="cat-nose"></i></span><span class="cat-coat"></span></div>
-          <div class="card-copy"><span class="card-kicker">TEMAN CERITA</span><h2>Dr. Paws</h2><p>Teman cerita yang ramah dan menyenangkan untuk anak.</p><a class="card-cta" href="/dr-paws">Ngobrol dengan Dr. Paws <span aria-hidden="true">↗</span></a></div>
+          <div class="card-copy"><span class="card-kicker">02 / TEMAN CERITA</span><h2>Dr. Paws</h2><p>Teman cerita yang ramah dan menyenangkan untuk anak.</p><a class="card-cta" href="/dr-paws">Temui Dr. Paws <span aria-hidden="true">↗</span></a></div>
         </article>
       </div>
-      <p class="home-note">Karakter AI. Percakapan membutuhkan internet dan izin mikrofon.</p>
+      <div class="benefits" aria-label="Keunggulan MyNaiA"><div><span>01</span><strong>Ngobrol langsung</strong><p>Percakapan video dua arah bersama avatar AI.</p></div><div><span>02</span><strong>Mengingatmu</strong><p>Hal penting dapat diingat untuk obrolan berikutnya.</p></div><div><span>03</span><strong>Dua karakter</strong><p>Naya dan Dr. Paws punya ruang cerita terpisah.</p></div></div>
+      <p class="home-note">Pilih karakter untuk memulai. Percakapan membutuhkan internet dan izin mikrofon.</p>
     </section>
 
     <section id="call-view" class="call-view" hidden>
-      <div class="call-heading"><a class="back-link" href="/" aria-label="Kembali ke Beranda">← <span>Beranda</span></a><div><p class="eyebrow">VIDEO CONVERSATION</p><h1 id="mode-title">Naya</h1></div><span id="mode-badge" class="mode-badge">AI companion</span></div>
+      <div class="call-heading"><a class="back-link" href="/" aria-label="Kembali ke Beranda">← <span>Beranda</span></a><div><p class="eyebrow">RUANG CERITA</p><h1 id="mode-title">Naya</h1></div><span id="mode-badge" class="mode-badge">AI companion</span></div>
       <div id="room-layout" class="room-layout"><div id="stage" class="stage" aria-label="Area video percakapan">
-        <div id="placeholder" class="placeholder"><div id="avatar-mark" class="avatar-mark">N</div><h2 id="placeholder-title">Siap ngobrol?</h2><p id="placeholder-description">Pilih durasi, lalu mulai saat kamu siap.</p></div>
+        <div id="placeholder" class="placeholder"><div id="avatar-mark" class="avatar-mark">N</div><p class="eyebrow">RUANG PERCAKAPAN</p><h2 id="placeholder-title">Siap ngobrol dengan Naya?</h2><p id="placeholder-description">Naya dapat mengingat hal-hal penting dari obrolan sebelumnya.</p></div>
         <div id="status" class="status" role="status" aria-live="polite"><span class="status-dot"></span><span id="status-text">Ready</span></div>
         <button id="exit-fullscreen" class="exit-fullscreen icon-button" type="button" aria-label="Keluar dari layar penuh" hidden>✕</button>
       </div><aside id="self-view" class="self-view" aria-label="Preview kamera Anda" hidden><video id="self-view-video" autoplay muted playsinline></video><span>Anda</span></aside></div>
       <div id="error" class="error" role="alert" hidden></div>
       <div id="offline" class="offline-note" role="status" hidden>Koneksi internet diperlukan untuk ngobrol dengan MyNaiA.</div>
-      <div id="precall" class="precall"><div id="subject-panel" class="subject-panel" hidden><label for="subject-select">Siapa yang akan ngobrol?</label><select id="subject-select" aria-label="Profil anak"></select><button id="subject-add-toggle" type="button">+ Tambah profil</button><form id="subject-add-form" hidden><input id="subject-name" type="text" maxlength="80" placeholder="Nama profil" required autocomplete="off"><input id="subject-nickname" type="text" maxlength="80" placeholder="Nama panggilan (opsional)" autocomplete="off"><button type="submit">Simpan</button></form><button id="subject-reset" type="button" disabled>Reset ingatan Dr. Paws untuk profil ini</button><p id="subject-message" role="status"></p></div><label for="duration">Durasi sesi</label><select id="duration" aria-label="Durasi sesi"><option value="3">3 menit</option><option value="5" selected>5 menit</option><option value="10">10 menit</option><option value="20">20 menit</option></select><p id="duration-warning" class="duration-warning" hidden>Durasi panjang memakai lebih banyak menit Tavus.</p></div>
+      <div id="precall" class="precall"><div id="subject-panel" class="subject-panel" hidden><label for="subject-select">Siapa yang akan ngobrol dengan Dr. Paws?</label><select id="subject-select" aria-label="Profil anak" class="subject-native-select"></select><div id="subject-options" class="subject-options" role="group" aria-label="Pilih profil anak"></div><button id="subject-add-toggle" type="button">+ Tambah profil</button><form id="subject-add-form" hidden><input id="subject-name" type="text" maxlength="80" placeholder="Nama profil" required autocomplete="off"><input id="subject-nickname" type="text" maxlength="80" placeholder="Nama panggilan (opsional)" autocomplete="off"><button type="submit">Simpan</button></form><p id="subject-message" role="status"></p></div><label for="duration">Durasi sesi</label><select id="duration" aria-label="Durasi sesi"><option value="3">3 menit</option><option value="5" selected>5 menit</option><option value="10">10 menit</option><option value="20">20 menit</option></select><p id="duration-warning" class="duration-warning" hidden>Durasi panjang memakai lebih banyak menit Tavus.</p></div>
       <div class="controls" aria-label="Kontrol percakapan">
         <button id="start" class="primary-button" type="button">Mulai Ngobrol</button>
         <button id="mic-help" class="control-button" type="button" aria-label="Kontrol mikrofon di dalam video" hidden>🎙 <span>Mikrofon</span></button>
-        <button id="self-view-toggle" class="control-button" type="button" aria-pressed="true" hidden>Self View: Compact</button>
+        <button id="self-view-toggle" class="control-button" type="button" aria-pressed="true" aria-label="Sembunyikan preview kamera" hidden>◉ <span>Self View</span></button>
         <button id="fullscreen" class="control-button" type="button" aria-label="Masuk layar penuh">⛶ <span>Fullscreen</span></button>
         <button id="end" class="end-button" type="button" aria-label="Akhiri panggilan" disabled hidden>■ <span>Akhiri</span></button>
       </div>
-      <p id="mic-hint" class="call-hint">Izin dan mute mikrofon dikendalikan melalui kontrol di dalam video.</p>
-      <div id="postcall" class="postcall" hidden><p id="postcall-text">Tadi seru ngobrol sama kamu.</p><div><button id="again" type="button">Ngobrol lagi</button><a href="/">Kembali ke Beranda</a></div></div>
-      <details id="debug-panel" class="debug-panel"><summary>Detail uji</summary><p id="debug-text">Memeriksa konfigurasi…</p></details>
+      <p id="mic-hint" class="call-hint">Kontrol mikrofon ada di dalam ruang video.</p>
+      <div id="postcall" class="postcall" hidden><span class="postcall-mark">✦</span><h2 id="postcall-title">Percakapan selesai.</h2><p id="postcall-text">Sampai jumpa di obrolan berikutnya.</p><div><button id="again" type="button">Ngobrol lagi</button><a href="/">Kembali ke Beranda</a></div></div>
+      <details id="debug-panel" class="debug-panel" hidden><summary>Detail teknis</summary><p id="debug-text">Memeriksa konfigurasi…</p></details>
     </section>
 
-    <aside id="settings-panel" class="settings-panel" hidden aria-label="Pengaturan"><div class="settings-head"><h2>Pengaturan</h2><button id="settings-close" class="icon-button" type="button" aria-label="Tutup pengaturan">✕</button></div><label for="setting-duration">Durasi default</label><select id="setting-duration"><option value="3">3 menit</option><option value="5">5 menit</option><option value="10">10 menit</option><option value="20">20 menit</option></select><p>Audio tidak diubah. Mode saat ini: <strong id="settings-mode">Beranda</strong>.</p><details id="admin-settings" class="admin-settings"><summary>Tavus Engine</summary><p id="admin-message" role="status"></p><div id="admin-controls" hidden><label for="admin-profile">Profil Tavus</label><select id="admin-profile" aria-label="Tavus Engine"></select><button id="admin-apply" type="button">Gunakan profil</button><button id="admin-inspect" type="button">Periksa konfigurasi</button><p id="admin-profile-status" role="status"></p><p>Usage: check Tavus dashboard.</p></div></details></aside>
+    <aside id="settings-panel" class="settings-panel" hidden aria-label="Pengaturan"><div class="settings-head"><div><span class="settings-kicker">MYNAIA / PREFERENSI</span><h2>Pengaturan</h2></div><button id="settings-close" class="icon-button" type="button" aria-label="Tutup pengaturan">✕</button></div><div class="settings-group"><span>PERCAKAPAN</span><label for="setting-duration">Durasi default</label><select id="setting-duration"><option value="3">3 menit</option><option value="5">5 menit</option><option value="10">10 menit</option><option value="20">20 menit</option></select><p>Mode saat ini: <strong id="settings-mode">Beranda</strong></p></div><details id="admin-settings" class="admin-settings"><summary>Tavus Engine</summary><p id="admin-message" role="status"></p><div id="admin-controls" hidden><label for="admin-profile">Profil Tavus</label><select id="admin-profile" aria-label="Tavus Engine"></select><button id="admin-apply" type="button">Gunakan profil</button><button id="admin-inspect" type="button">Periksa konfigurasi</button><p id="admin-profile-status" role="status"></p><p>Usage: check Tavus dashboard.</p></div></details><div id="subject-manage" class="subject-manage" hidden><button id="subject-reset" type="button" disabled>Reset ingatan Dr. Paws untuk profil ini</button></div></aside>
   </main>
 </body>
 </html>

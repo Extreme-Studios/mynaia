@@ -25,6 +25,8 @@ Supabase
 
 PWA menyimpan shell statis saja. `/api/` selalu jaringan dan tidak pernah masuk cache service worker. Fullscreen dan Wake Lock adalah peningkatan browser yang gagal dengan aman. Daily Prebuilt tetap pemilik kontrol media; host hanya menampilkan status yang dapat dibuktikan. Self-view compact ditempatkan di kanan pada desktop dan floating kecil pada HP, dengan mode Hidden sebagai preferensi UI. Pengaturan kualitas video yang tidak didukung dihapus. Detail keputusan dan pengujian di `docs/milestone-5.md`.
 
+Milestone 6 menambah lapisan presentasi pada frontend vanilla JavaScript: `motion.mjs` mengatur splash dan transisi dengan GSAP, sedangkan CSS dan HTML mengatur landing, profil anak, call, end state, dan Settings. Tidak ada perubahan kontrak Tavus, Supabase, atau Gemini. Splash tidak memulai sesi. Service worker v10 memakai network-first untuk navigasi, tidak menyimpan respons `/api/`, dan halaman yang idle reload saat worker baru mengambil alih. Detail di `docs/milestone-6.md`.
+
 ## Sasaran pengalaman
 
 Pengguna membuka aplikasi, melihat video Naya sebagai elemen utama, memberi izin microphone, lalu berbicara seperti panggilan video. Tahap stock Face adalah proof of concept identitas percakapan Naya; kesesuaian wajah Indonesia belum terbukti.

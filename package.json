@@ -6,12 +6,13 @@
     "dev": "node --use-system-ca app/backend/server.mjs",
     "build": "node scripts/build-web.mjs",
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check app/backend/server.mjs && node --check app/backend/tavus.mjs && node --check app/backend/memory.mjs && node --check app/backend/memory-service.mjs && node --check app/backend/memory-extract.mjs && node --check app/backend/subjects.mjs && node --check app/backend/transcript.mjs && node --check app/backend/supabase.mjs && node --check app/backend/gemini.mjs && node --check api/handler.js && node --check app/frontend/app.js && node --check app/frontend/controller.mjs && node --check app/frontend/self-view.mjs"
+    "check": "node --check app/backend/server.mjs && node --check app/backend/tavus.mjs && node --check app/backend/memory.mjs && node --check app/backend/memory-service.mjs && node --check app/backend/memory-extract.mjs && node --check app/backend/subjects.mjs && node --check app/backend/transcript.mjs && node --check app/backend/supabase.mjs && node --check app/backend/gemini.mjs && node --check api/handler.js && node --check app/frontend/app.js && node --check app/frontend/controller.mjs && node --check app/frontend/self-view.mjs && node --check app/frontend/motion.mjs"
   },
   "engines": {
     "node": ">=24"
   },
   "dependencies": {
-    "@daily-co/daily-js": "^0.92.2"
+    "@daily-co/daily-js": "^0.92.2",
+    "gsap": "^3.15.0"
   }
 }
