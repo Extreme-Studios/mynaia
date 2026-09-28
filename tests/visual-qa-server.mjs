@@ -19,6 +19,39 @@ createServer(async (request, response) => {
     response.writeHead(200, { 'content-type': 'application/json' });
     response.end(JSON.stringify({ subjects: [{ id: '00000000-0000-4000-8000-000000000001', display_name: 'Profil demo', nickname: 'Demo' }] })); return;
   }
+  if (url.pathname === '/api/dr-paws/assessment') {
+    const subjectId = '00000000-0000-4000-8000-000000000001';
+    const sessionId = '00000000-0000-4000-8000-000000000002';
+    const templateId = '00000000-0000-4000-8000-000000000003';
+    const template = { id: templateId, name: 'Sekolah & Belajar', purpose: 'Mendengarkan pengalaman di sekolah.', version: 1,
+      domains: [{ domain: 'sekolah', goal: 'Dengarkan kegiatan sekolah yang disukai.' }] };
+    const session = { id: sessionId, subject_id: subjectId, template_snapshot: template, template_version: 1,
+      planned_duration_minutes: 5, status: 'draft', created_at: '2026-09-28T09:00:00Z', child_name: 'Profil demo', report_status: 'draft',
+      summary: 'Anak bercerita tentang kegiatan menggambar.' };
+    const record = { session, subject: { id: subjectId, display_name: 'Profil demo' },
+      conversation: { started_at: session.created_at, ended_at: '2026-09-28T09:05:00Z', transcript_status: 'ready', memory_status: 'ready' },
+      transcript: [{ position: 1, role: 'user', content: 'Aku suka menggambar.', seconds_from_start: 12 },
+        { position: 2, role: 'assistant', content: 'Wah, apa yang kamu gambar?', seconds_from_start: 14 }],
+      analysis: { result: { session_summary: 'Anak bercerita tentang kegiatan menggambar.', domains: [{ domain: 'sekolah', coverage: 'partial',
+        observations: [{ text: 'Anak menyebut suka menggambar.', evidence_turns: [1] }] }], safety_review: { recommended: false } } },
+      report: { status: 'draft', version: 1, professional_notes: '', content: { purpose: template.purpose, summary: 'Anak bercerita tentang kegiatan menggambar.',
+        observations: [{ domain: 'sekolah', text: 'Anak menyebut suka menggambar.', evidence_turns: [1] }],
+        insufficient: ['Pengalaman di kelas belum cukup tergali.'], follow_up: ['Kegiatan menggambar berikutnya.'],
+        disclaimer: 'Hasil ini merupakan ringkasan berbasis percakapan dengan AI dan bukan diagnosis psikologis atau medis.' } }, revisions: [] };
+    let result;
+    switch (url.searchParams.get('action')) {
+      case 'dashboard': result = { children: [{ id: subjectId, display_name: 'Profil demo' }], sessions: [session],
+        counts: { children: 1, pending: 0, draft: 1, reviewed: 0 } }; break;
+      case 'templates': result = { templates: [template] }; break;
+      case 'consent': result = { consented: false, consentVersion: 'dr-paws-assessment-v1', record: null }; break;
+      case 'child': result = { subject: record.subject, sessions: [session], summaries: [{ summary: session.summary, created_at: session.created_at }],
+        open_topics: [{ content: 'Cerita gambar lain' }], free_chat_count: 1,
+        consent: { consented: false, consentVersion: 'dr-paws-assessment-v1', record: null } }; break;
+      case 'session': result = record; break;
+      default: response.writeHead(404); response.end(); return;
+    }
+    response.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }); response.end(JSON.stringify(result)); return;
+  }
   if (url.pathname.startsWith('/api/')) { response.writeHead(404); response.end(); return; }
   if (url.pathname === '/qa') {
     const html = await readFile(join(publicDir, 'index.html'), 'utf8');
@@ -80,7 +113,8 @@ createServer(async (request, response) => {
     response.end(html.replace(/<script type="module" src="\/app\.js\?v=\d+"><\/script>/, '').replace('</body>', mock + '</body>'));
     return;
   }
-  const name = ['/', '/naia', '/naya', '/dr-paws'].includes(url.pathname) ? 'index.html' : url.pathname.slice(1);
+  const name = url.pathname === '/dr-paws/dashboard' ? 'dashboard.html' :
+    ['/', '/naia', '/naya', '/dr-paws'].includes(url.pathname) ? 'index.html' : url.pathname.slice(1);
   if (!/^(?:[a-zA-Z0-9._/-]+)$/.test(name) || name.includes('..')) { response.writeHead(400); response.end(); return; }
   try {
     const body = await readFile(join(publicDir, name));

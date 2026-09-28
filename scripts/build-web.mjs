@@ -11,7 +11,7 @@ for (const name of await readdir(destination)) {
   if (/^cinematic-[A-Z0-9]+\.js$/.test(name)) await unlink(join(destination, name));
 }
 await mkdir(join(destination, 'icons'), { recursive: true });
-for (const name of ['index.html', 'styles.css', 'app.js', 'controller.mjs', 'manifest.webmanifest', 'sw.js',
+for (const name of ['index.html', 'styles.css', 'app.js', 'dashboard.html', 'dashboard.js', 'dashboard.css', 'controller.mjs', 'manifest.webmanifest', 'sw.js',
   'self-view.mjs', 'motion.mjs', 'hero-media.mjs', 'icons/icon-192.png', 'icons/icon-512.png']) {
   await copyFile(join(source, name), join(destination, name));
 }

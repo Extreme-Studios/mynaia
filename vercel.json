@@ -9,6 +9,7 @@
     { "source": "/api/memory/status", "destination": "/api/handler?route=memory-status" },
     { "source": "/api/dr-paws/subjects", "destination": "/api/handler?route=subjects" },
     { "source": "/api/dr-paws/subjects/:id/reset", "destination": "/api/handler?route=subject-reset&id=:id" },
+    { "source": "/api/dr-paws/assessment", "destination": "/api/handler?route=assessment" },
     { "source": "/api/modes/status", "destination": "/api/handler?route=mode-status" },
     { "source": "/api/admin/tavus-profiles", "destination": "/api/handler?route=admin-profiles" },
     { "source": "/api/admin/tavus-profile", "destination": "/api/handler?route=admin-profile" },
@@ -21,6 +22,7 @@
     { "source": "/api/conversations/:id/status", "destination": "/api/handler?route=conversation-status&id=:id" },
     { "source": "/naia", "destination": "/index.html" },
     { "source": "/naya", "destination": "/index.html" },
-    { "source": "/dr-paws", "destination": "/index.html" }
+    { "source": "/dr-paws", "destination": "/index.html" },
+    { "source": "/dr-paws/dashboard", "destination": "/dashboard.html" }
   ]
 }

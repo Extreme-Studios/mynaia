@@ -1,8 +1,8 @@
-import { createHeroMedia } from './hero-media.mjs?v22';
-import { createConversationController } from './controller.mjs?v22';
-import { createSelfView } from './self-view.mjs?v22';
-import { startProductMotion, animateVisible, setupPageTransitions } from './motion.mjs?v22';
-import { createCinematic } from './cinematic.js?v22';
+import { createHeroMedia } from './hero-media.mjs?v23';
+import { createConversationController } from './controller.mjs?v23';
+import { createSelfView } from './self-view.mjs?v23';
+import { startProductMotion, animateVisible, setupPageTransitions } from './motion.mjs?v23';
+import { createCinematic } from './cinematic.js?v23';
 
 const $ = (selector) => document.querySelector(selector);
 const mode = location.pathname === '/dr-paws' ? 'dr_paws' : 'naya';
@@ -30,6 +30,11 @@ let statusChecking = false;
 let wakeLock;
 let fullscreenFallback = false;
 let subjectId = '';
+let assessmentSetup = null;
+if (mode === 'dr_paws') {
+  try { assessmentSetup = JSON.parse(sessionStorage.getItem('mynaia.drPawsAssessmentSetup') || 'null'); }
+  catch { assessmentSetup = null; }
+}
 let room;
 let selfViewMode;
 try { selfViewMode = localStorage.getItem('mynaia.selfView') === 'hidden' ? 'hidden' : 'compact'; }
@@ -49,6 +54,8 @@ document.body.dataset.mode = mode;
 document.title = isHome ? 'MyNaiA — Teman AI' : `${modeName} — MyNaiA`;
 $('#subject-panel').hidden = mode !== 'dr_paws' || isHome;
 $('#subject-manage').hidden = mode !== 'dr_paws' || isHome;
+$('#professional-link').hidden = mode !== 'dr_paws' || isHome;
+if (assessmentSetup) $('#professional-link').textContent = 'Ubah pengaturan sesi';
 document.querySelector(`.primary-nav a[href="${location.pathname}"]`)?.setAttribute('aria-current', 'page');
 
 function savedDuration() {
@@ -56,6 +63,7 @@ function savedDuration() {
   catch { return '5'; }
 }
 $('#duration').value = savedDuration();
+if (assessmentSetup && ['3','5','10','20'].includes(String(assessmentSetup.durationMinutes))) $('#duration').value = String(assessmentSetup.durationMinutes);
 $('#setting-duration').value = savedDuration();
 $('#duration-warning').hidden = $('#duration').value !== '20';
 
@@ -104,8 +112,16 @@ function setAccess(granted) {
 }
 
 const api = {
-  start: () => apiRequest('/api/conversations', { method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ mode, subjectId: mode === 'dr_paws' ? subjectId : undefined, durationMinutes: Number($('#duration').value) }) }),
+  start: async () => {
+    const body = { mode, subjectId: mode === 'dr_paws' ? subjectId : undefined, durationMinutes: Number($('#duration').value) };
+    if (mode === 'dr_paws' && assessmentSetup) Object.assign(body, {
+      assessmentTemplateId: assessmentSetup.templateId, professionalNote: assessmentSetup.professionalNote,
+      includeProfessionalNote: assessmentSetup.includeProfessionalNote === true });
+    const result = await apiRequest('/api/conversations', { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body) });
+    if (assessmentSetup) { sessionStorage.removeItem('mynaia.drPawsAssessmentSetup'); assessmentSetup = null; }
+    return result;
+  },
   end: async (id) => {
     const result = await apiRequest(`/api/conversations/${encodeURIComponent(id)}/end`, { method: 'POST' });
     setTimeout(() => { apiRequest('/api/memory/sync', { method: 'POST' }).catch(() => {}); }, 8000);
@@ -293,7 +309,7 @@ $('#access-form').addEventListener('submit', async (event) => {
       body: JSON.stringify({ code: $('#access-code').value }) });
     $('#access-code').value = '';
     setAccess(true);
-    if (!isHome) { await refreshModeStatus(); if (mode === 'dr_paws') await refreshSubjects(); }
+    if (!isHome) { await refreshModeStatus(); if (mode === 'dr_paws') await refreshSubjects(assessmentSetup?.subjectId); }
     render(controller.snapshot());
   } catch (error) { $('#access-message').textContent = error.message; }
 });
@@ -333,6 +349,7 @@ async function refreshSubjects(preferredId = '') {
     options.append(button);
   }
   $('#subject-message').textContent = data.subjects.length ? '' : 'Tambahkan profil sebelum mulai ngobrol.';
+  if (assessmentSetup && subjectId === assessmentSetup.subjectId) $('#subject-panel').hidden = true;
   render(controller.snapshot());
 }
 $('#subject-select').addEventListener('change', () => {
@@ -434,7 +451,7 @@ updateOffline();
 apiRequest('/api/access/status', { signal: AbortSignal.timeout?.(10000) }).then((data) => {
   setAccess(!data.required || data.authorized);
   if (!accessGranted) return;
-  if (mode === 'dr_paws' && !isHome) refreshSubjects().catch(() => { $('#subject-message').textContent = 'Profil anak belum tersedia.'; });
+  if (mode === 'dr_paws' && !isHome) refreshSubjects(assessmentSetup?.subjectId).catch(() => { $('#subject-message').textContent = 'Profil anak belum tersedia.'; });
   if (!isHome) apiRequest('/api/modes/status').then((data) => {
     modeReady.naya = Boolean(data.naya);
     modeReady.dr_paws = Boolean(data.drPaws);

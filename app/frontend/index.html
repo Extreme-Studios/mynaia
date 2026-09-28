@@ -11,9 +11,9 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
-  <link rel="stylesheet" href="/styles.css?v=22">
+  <link rel="stylesheet" href="/styles.css?v=23">
   <script defer src="/gsap.min.js"></script>
-  <script type="module" src="/app.js?v=22"></script>
+  <script type="module" src="/app.js?v=23"></script>
   <title>MyNaiA — Teman AI</title>
 </head>
 <body>
@@ -50,7 +50,7 @@
       </div><aside id="self-view" class="self-view" aria-label="Preview kamera Anda" hidden><video id="self-view-video" autoplay muted playsinline></video><span>Anda</span></aside></div>
       <div id="error" class="error" role="alert" hidden></div>
       <div id="offline" class="offline-note" role="status" hidden>Koneksi internet diperlukan untuk ngobrol dengan MyNaiA.</div>
-      <div id="precall" class="precall"><div id="subject-panel" class="subject-panel" hidden><label for="subject-select">Siapa yang akan ngobrol dengan Dr. Paws?</label><select id="subject-select" aria-label="Profil anak" class="subject-native-select"></select><div id="subject-options" class="subject-options" role="group" aria-label="Pilih profil anak"></div><button id="subject-add-toggle" type="button">+ Tambah profil</button><form id="subject-add-form" hidden><input id="subject-name" type="text" maxlength="80" placeholder="Nama profil" required autocomplete="off"><input id="subject-nickname" type="text" maxlength="80" placeholder="Nama panggilan (opsional)" autocomplete="off"><button type="submit">Simpan</button></form><p id="subject-message" role="status"></p></div><label for="duration">Durasi sesi</label><select id="duration" aria-label="Durasi sesi"><option value="3">3 menit</option><option value="5" selected>5 menit</option><option value="10">10 menit</option><option value="20">20 menit</option></select><p id="duration-warning" class="duration-warning" hidden>Durasi panjang memakai lebih banyak menit Tavus.</p></div>
+      <div id="precall" class="precall"><div id="subject-panel" class="subject-panel" hidden><label for="subject-select">Siapa yang akan ngobrol dengan Dr. Paws?</label><select id="subject-select" aria-label="Profil anak" class="subject-native-select"></select><div id="subject-options" class="subject-options" role="group" aria-label="Pilih profil anak"></div><button id="subject-add-toggle" type="button">+ Tambah profil</button><form id="subject-add-form" hidden><input id="subject-name" type="text" maxlength="80" placeholder="Nama profil" required autocomplete="off"><input id="subject-nickname" type="text" maxlength="80" placeholder="Nama panggilan (opsional)" autocomplete="off"><button type="submit">Simpan</button></form><p id="subject-message" role="status"></p></div><label for="duration">Durasi sesi</label><select id="duration" aria-label="Durasi sesi"><option value="3">3 menit</option><option value="5" selected>5 menit</option><option value="10">10 menit</option><option value="20">20 menit</option></select><p id="duration-warning" class="duration-warning" hidden>Durasi panjang memakai lebih banyak menit Tavus.</p><a id="professional-link" href="/dr-paws/dashboard" hidden>Ruang profesional Dr. Paws</a></div>
       <div class="controls" aria-label="Kontrol percakapan">
         <button id="start" class="primary-button" type="button">Mulai Ngobrol</button>
         <button id="mic-help" class="control-button" type="button" aria-label="Kontrol mikrofon di dalam video" hidden>🎙 <span>Mikrofon</span></button>

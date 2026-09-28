@@ -1,4 +1,4 @@
-const CACHE = 'mynaia-static-v22';
+const CACHE = 'mynaia-static-v23';
 const STATIC = new Set(['/', '/index.html', '/naia', '/naya', '/dr-paws', '/styles.css', '/app.js', '/controller.mjs', '/self-view.mjs', '/motion.mjs', '/gsap.min.js',
   '/hero-media.mjs', '/assets/hero/naia-hero-poster.jpg', '/assets/hero/dr-paws-hero-poster.jpg', '/cinematic.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png']);
 self.addEventListener('install', (event) => {
@@ -11,7 +11,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
-  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
+  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/') || url.pathname.startsWith('/dr-paws/dashboard') ||
+    ['/dashboard.html','/dashboard.js','/dashboard.css'].includes(url.pathname)) return;
   if (event.request.mode === 'navigate') {
     event.respondWith(fetch(event.request, { cache: 'no-store' }).catch(async () => (await caches.open(CACHE)).match('/index.html')));
     return;

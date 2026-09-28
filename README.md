@@ -1,8 +1,14 @@
 # Naia Virtual Girl
 
+## Dr. Paws — ruang profesional (Milestone 7)
+
+Buka `/dr-paws/dashboard` dengan password akses MyNaiA yang sama. Dashboard menyediakan tujuh template wawancara percakapan asli, template khusus, persetujuan orang dewasa per profil anak, sesi terstruktur, transkrip, analisis dengan rujukan giliran, review laporan, revisi, dan unduhan PDF privat setelah laporan ditinjau. Free chat Dr. Paws dan Naia tetap tersedia. Jalankan migrasi `supabase/migrations/005_dr_paws_assessment.sql`, `006_dr_paws_assessment_deletion.sql`, dan `007_dr_paws_analysis_model.sql` berurutan sebelum deploy ke lingkungan baru. Pada Supabase production `mynaia`, ketiganya sudah diterapkan dan tujuh template bawaan diverifikasi. Implementasi belum diuji dengan wawancara Tavus nyata; lihat [docs/milestone-7.md](docs/milestone-7.md).
+
+**Current Milestone: 7 – implementation ready; human structured interview validation required.**
+
 Home and precall now use muted Google Flow talking loops for Naia and Dr. Paws. Original media is stored in [MyNaiA Hero Assets on Drive](https://drive.google.com/drive/u/0/folders/1mGxz9JxRLlpDT_YMkFkWtg6Q9zvwqj8z); the [hero_assets catalog](https://docs.google.com/spreadsheets/d/1l0wdyL3W3l9a5J3eMfyKtdQ9x-FzXaFu9lTkcmPZ2v0/edit?gid=0#gid=0) tracks master links. Browser restrictions prevent reliable direct Drive video embedding, so the site delivers ~656 KB of optimized poster/video copies from Vercel. No Tavus minutes were used for these decorative clips. See `docs/milestone-6.md` and `docs/flow/README.md`.
 
-**Current Milestone: 6 – Cinematic Product UI; human visual validation required**
+Milestone 6 cinematic UI remains in use; its human visual validation is documented separately.
 
 Milestone 6 membangun ulang tampilan dengan scene 3D Three.js: splash spasial, dua lingkungan karakter dalam satu viewport, pointer parallax, dan transisi kamera GSAP. Renderer mencoba WebGPU, turun ke WebGL, lalu CSS bila GPU gagal; scene berhenti saat call aktif. Jalur Tavus, Supabase, Gemini, serta delapan profil Tavus tetap sama. QA pengembangan tidak membuat conversation Tavus. Rincian di [docs/milestone-6.md](docs/milestone-6.md).
 

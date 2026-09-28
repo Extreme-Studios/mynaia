@@ -1,5 +1,9 @@
 # Arsitektur MyNaiA — Milestone 5
 
+## Milestone 7 — assessment Dr. Paws
+
+Assessment adalah lapisan terpisah di atas sesi Dr. Paws dan memori Supabase yang sudah ada. `/dr-paws/dashboard` memakai password/cookie akses existing. Sebelum sesi terstruktur, backend memvalidasi UUID profil anak, template asli tersimpan, dan consent orang dewasa; lalu menggabungkan tujuan wawancara ringkas dengan konteks memori anak. Catatan profesional hanya dikirim ke konteks realtime bila dipilih eksplisit. Free chat tetap memakai payload lama. Setelah sesi, transkrip yang sudah tersimpan diproses Gemini dengan skema observasi serta referensi nomor giliran anak; laporan disimpan sebagai draf terpisah dari memori, lalu ditinjau manusia. PDF dibuat privat saat diminta dan hanya untuk REVIEWED/FINAL. Seluruh tabel assessment baru memiliki RLS dan akses service role di server; tidak ada public report bucket. Lihat `docs/milestone-7.md` untuk skema, batasan akses prototype single-user, dan validasi.
+
 ## Multi-Tavus Profile Engine
 
 Supabase menyimpan `naya_app_settings.tavus_active_profile` sebagai nomor global 1–8 dan tetap menjadi satu-satunya sumber memori permanen. Vercel menyimpan delapan set kredensial Tavus; backend membaca nomor aktif dari Supabase pada setiap Start, memilih PAL dan Face sesuai mode, lalu menyimpan `tavus_profile_used` bersama PAL, Face, dan conversation ID di sesi. End, status provider, dan pengambilan transkrip memakai profil yang tercatat pada sesi, sehingga switch manual tidak memindahkan sesi berjalan. Memori Naia memakai ID pengguna yang sama di semua profil. Dr. Paws tetap terisolasi dalam namespace mode sendiri.

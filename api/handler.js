@@ -7,6 +7,9 @@ import { parseMode, parseDuration } from '../app/backend/modes.mjs';
 import { PROFILE_COUNT, makeActiveProfileStore, modeProfileError, parseProfile, publicProfileStatus, resolveTavusProfile } from '../app/backend/tavus-profiles.mjs';
 import { authorized, equalSecret, sameOrigin, sessionToken } from '../app/backend/access-auth.mjs';
 import { inspectTavusProfile } from '../app/backend/tavus-profile-inspect.mjs';
+import { makeAssessmentService, AssessmentError, buildInterviewContext } from '../app/backend/assessments.mjs';
+import { analyzeAssessment } from '../app/backend/assessment-analysis.mjs';
+import { dispatchAssessmentRequest } from '../app/backend/assessment-route.mjs';
 
 export const config = { maxDuration: 60 };
 
@@ -20,12 +23,12 @@ function json(response, status, body, headers = {}) {
   response.end(JSON.stringify(body));
 }
 
-async function readJson(request) {
+async function readJson(request, limit = 1024) {
   if (request.body && typeof request.body === 'object') return request.body;
   let raw = '';
   for await (const chunk of request) {
     raw += chunk;
-    if (raw.length > 1024) throw new TavusError('INVALID_REQUEST', 'Permintaan terlalu besar.', 413);
+    if (raw.length > limit) throw new TavusError('INVALID_REQUEST', 'Permintaan terlalu besar.', 413);
   }
   try { return JSON.parse(raw || '{}'); }
   catch { throw new TavusError('INVALID_REQUEST', 'JSON tidak valid.', 400); }
@@ -63,6 +66,9 @@ export function createVercelHandler({ env = process.env, client, memory, store: 
     extract: (messages) => import('../app/backend/memory-extract.mjs').then(({ extractWithGemini }) =>
       extractWithGemini(messages, { apiKey: env.GEMINI_API_KEY, model: env.GEMINI_MEMORY_MODEL || 'gemini-2.5-flash', mode: 'dr_paws' })),
     tavusForProfile: (profile) => clientForProfile(profile, 'dr_paws') });
+  const assessments = makeAssessmentService({ store, subjects, analysisModel: env.GEMINI_MEMORY_MODEL || 'gemini-2.5-flash',
+    analyze: (messages, template) => analyzeAssessment(messages, template,
+      { apiKey: env.GEMINI_API_KEY, model: env.GEMINI_MEMORY_MODEL || 'gemini-2.5-flash' }) });
 
   return async function handler(request, response) {
     const url = new URL(request.url, 'https://mynaia.local');
@@ -74,6 +80,19 @@ export function createVercelHandler({ env = process.env, client, memory, store: 
       }
       if (!['access-status', 'access-login'].includes(route) && !authorized(request, accessCode)) {
         throw new TavusError('ACCESS_REQUIRED', 'Masukkan kode akses dulu.', 401);
+      }
+      if (route === 'assessment') {
+        if (!accessCode) throw new AssessmentError('PROFESSIONAL_ACCESS_UNAVAILABLE', 'Akses profesional belum dikonfigurasi.', 503);
+        if (request.method === 'POST' && !sameOrigin(request)) throw new AssessmentError('INVALID_ORIGIN', 'Asal permintaan tidak valid.', 403);
+        const result = await dispatchAssessmentRequest({ method: request.method, action: url.searchParams.get('action'),
+          id: url.searchParams.get('id'), body: request.method === 'POST' ? await readJson(request, 40000) : {},
+          service: assessments, drMemory });
+        if (result.pdf) {
+          response.writeHead(200, { 'content-type': 'application/pdf', 'content-disposition': 'attachment; filename="dr-paws-laporan.pdf"',
+            'cache-control': 'private, no-store', 'x-content-type-options': 'nosniff' });
+          response.end(result.pdf);
+        } else json(response, result.status || 200, result.body);
+        return;
       }
       if (request.method === 'GET' && route === 'memory-status') {
         const [naya, drPawsStatus] = await Promise.all([memoryService.status(), drMemory.status()]);
@@ -170,11 +189,16 @@ export function createVercelHandler({ env = process.env, client, memory, store: 
           const selectedMemory = mode === 'naya' ? memoryService : drMemory;
           const selectedTavus = clientForProfile(activeProfile, mode);
           const subjectId = mode === 'dr_paws' ? body.subjectId : undefined;
-          const context = await selectedMemory.prepareContext({ subjectId });
+          const assessment = mode === 'dr_paws' && body.assessmentTemplateId ?
+            await assessments.prepare({ subjectId, templateId: body.assessmentTemplateId, professionalNote: body.professionalNote,
+              includeProfessionalNote: body.includeProfessionalNote }) : null;
+          const memoryContext = await selectedMemory.prepareContext({ subjectId });
+          const context = assessment ? buildInterviewContext(memoryContext, assessment.template, assessment.includeNote ? assessment.note : '') : memoryContext;
           const session = await selectedTavus.createConversation({ conversationalContext: context, durationMinutes: durationSeconds / 60 });
           try { await selectedMemory.recordStarted(session.conversationId, { profileUsed: activeProfile, subjectId,
             sessionPalId: mode === 'naya' ? current.nayaPalId : current.drPawsPalId,
-            sessionFaceId: mode === 'naya' ? current.nayaFaceId : current.drPawsFaceId }); }
+            sessionFaceId: mode === 'naya' ? current.nayaFaceId : current.drPawsFaceId });
+            if (assessment) await assessments.recordStarted(session.conversationId, { subjectId, ...assessment, durationMinutes: durationSeconds / 60 }); }
           catch (error) {
             try { await selectedTavus.endConversation(session.conversationId); } catch { /* Avoid an orphaned paid session if storage fails. */ }
             throw error;
@@ -201,6 +225,10 @@ export function createVercelHandler({ env = process.env, client, memory, store: 
         await selectedTavus.endConversation(id);
         try { await selectedMemory.recordEnded(id); }
         catch (error) { console.error('Memory sync failed:', error?.code || error?.message?.split('_')[0] || 'ERROR'); }
+        if (mode === 'dr_paws') {
+          try { await assessments.processConversation(id, drMemory); }
+          catch (error) { console.error('Assessment sync failed:', error?.code || error?.name || 'ERROR'); }
+        }
         json(response, 200, { status: 'ended' });
         return;
       }
@@ -214,7 +242,7 @@ export function createVercelHandler({ env = process.env, client, memory, store: 
       }
       json(response, 404, { error: 'Tidak ditemukan.' });
     } catch (error) {
-      if (error instanceof TavusError || error instanceof SubjectError) json(response, error.status, { error: error.message, code: error.code });
+      if (error instanceof TavusError || error instanceof SubjectError || error instanceof AssessmentError) json(response, error.status, { error: error.message, code: error.code });
       else if (error instanceof StorageError) json(response, 503, { error: 'Penyimpanan memori belum tersedia.', code: error.code });
       else {
         console.error('Vercel API error:', error?.name || 'UnknownError');

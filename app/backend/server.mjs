@@ -12,6 +12,9 @@ import { parseMode, parseDuration } from './modes.mjs';
 import { PROFILE_COUNT, makeActiveProfileStore, modeProfileError, parseProfile, publicProfileStatus, resolveTavusProfile } from './tavus-profiles.mjs';
 import { authorized, equalSecret, sameOrigin, sessionToken } from './access-auth.mjs';
 import { inspectTavusProfile } from './tavus-profile-inspect.mjs';
+import { makeAssessmentService, AssessmentError, buildInterviewContext } from './assessments.mjs';
+import { analyzeAssessment } from './assessment-analysis.mjs';
+import { dispatchAssessmentRequest } from './assessment-route.mjs';
 
 const directory = dirname(fileURLToPath(import.meta.url));
 const root = resolve(directory, '..', '..');
@@ -21,6 +24,9 @@ const files = new Map([
   ['/index.html', ['index.html', 'text/html; charset=utf-8']],
   ['/styles.css', ['styles.css', 'text/css; charset=utf-8']],
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
+  ['/dashboard.html', ['dashboard.html', 'text/html; charset=utf-8']],
+  ['/dashboard.js', ['dashboard.js', 'text/javascript; charset=utf-8']],
+  ['/dashboard.css', ['dashboard.css', 'text/css; charset=utf-8']],
   ['/controller.mjs', ['controller.mjs', 'text/javascript; charset=utf-8']],
   ['/self-view.mjs', ['self-view.mjs', 'text/javascript; charset=utf-8']],
   ['/hero-media.mjs', ['hero-media.mjs', 'text/javascript; charset=utf-8']],
@@ -31,11 +37,11 @@ const files = new Map([
   ['/icons/icon-512.png', ['icons/icon-512.png', 'image/png']],
 ]);
 
-async function readJson(request) {
+async function readJson(request, limit = 1024) {
   let raw = '';
   for await (const chunk of request) {
     raw += chunk;
-    if (raw.length > 1024) throw new TavusError('INVALID_REQUEST', 'Permintaan terlalu besar.', 413);
+    if (raw.length > limit) throw new TavusError('INVALID_REQUEST', 'Permintaan terlalu besar.', 413);
   }
   try { return JSON.parse(raw || '{}'); }
   catch { throw new TavusError('INVALID_REQUEST', 'JSON tidak valid.', 400); }
@@ -74,6 +80,9 @@ export function createNayaServer({ client: injectedClient, gemini = geminiConfig
     palId: first.drPawsPalId, faceId: first.drPawsFaceId,
     subjects,
     tavusForProfile: (profile) => clientForProfile(profile, 'dr_paws') });
+  const assessments = makeAssessmentService({ store, subjects, analysisModel: env.GEMINI_MEMORY_MODEL || 'gemini-2.5-flash',
+    analyze: (messages, template) => analyzeAssessment(messages, template,
+      { apiKey: env.GEMINI_API_KEY, model: env.GEMINI_MEMORY_MODEL || 'gemini-2.5-flash' }) });
   let activeConversation;
   let creating = false;
   let endTimer;
@@ -84,11 +93,16 @@ export function createNayaServer({ client: injectedClient, gemini = geminiConfig
     }
     const selectedClient = clientForProfile(activeConversation.profileUsed, activeConversation.mode);
     const selectedMemory = activeConversation.mode === 'dr_paws' ? drMemory : memory;
+    const endedMode = activeConversation.mode;
     await selectedClient.endConversation(id);
     activeConversation = undefined;
     clearTimeout(endTimer);
     try { await selectedMemory.recordEnded(id); }
     catch (error) { console.error('Memory sync failed:', error?.code || 'ERROR'); }
+    if (endedMode === 'dr_paws') {
+      try { await assessments.processConversation(id, drMemory); }
+      catch (error) { console.error('Assessment sync failed:', error?.code || error?.name || 'ERROR'); }
+    }
   }
 
   return createServer(async (request, response) => {
@@ -113,6 +127,20 @@ export function createNayaServer({ client: injectedClient, gemini = geminiConfig
       }
       if (path.startsWith('/api/') && !authorized(request, accessCode)) {
         throw new TavusError('ACCESS_REQUIRED', 'Masukkan kode akses dulu.', 401);
+      }
+      if (path === '/api/dr-paws/assessment') {
+        if (!accessCode) throw new AssessmentError('PROFESSIONAL_ACCESS_UNAVAILABLE', 'Akses profesional belum dikonfigurasi.', 503);
+        if (request.method === 'POST' && !sameOrigin(request)) throw new AssessmentError('INVALID_ORIGIN', 'Asal permintaan tidak valid.', 403);
+        const url = new URL(request.url, 'http://localhost');
+        const result = await dispatchAssessmentRequest({ method: request.method, action: url.searchParams.get('action'),
+          id: url.searchParams.get('id'), body: request.method === 'POST' ? await readJson(request, 40000) : {},
+          service: assessments, drMemory });
+        if (result.pdf) {
+          response.writeHead(200, { 'content-type': 'application/pdf', 'content-disposition': 'attachment; filename="dr-paws-laporan.pdf"',
+            'cache-control': 'private, no-store', 'x-content-type-options': 'nosniff' });
+          response.end(result.pdf);
+        } else json(response, result.status || 200, result.body);
+        return;
       }
       if (request.method === 'GET' && path === '/api/memory/status') {
         const [naya, drPawsStatus] = await Promise.all([memory.status(), drMemory.status()]);
@@ -197,11 +225,16 @@ export function createNayaServer({ client: injectedClient, gemini = geminiConfig
           const selectedMemory = mode === 'dr_paws' ? drMemory : memory;
           const selectedClient = clientForProfile(activeProfile, mode);
           const subjectId = mode === 'dr_paws' ? body.subjectId : undefined;
-          const context = await selectedMemory.prepareContext({ subjectId });
+          const assessment = mode === 'dr_paws' && body.assessmentTemplateId ?
+            await assessments.prepare({ subjectId, templateId: body.assessmentTemplateId, professionalNote: body.professionalNote,
+              includeProfessionalNote: body.includeProfessionalNote }) : null;
+          const memoryContext = await selectedMemory.prepareContext({ subjectId });
+          const context = assessment ? buildInterviewContext(memoryContext, assessment.template, assessment.includeNote ? assessment.note : '') : memoryContext;
           const session = await selectedClient.createConversation({ conversationalContext: context, durationMinutes: durationSeconds / 60 });
           try { await selectedMemory.recordStarted(session.conversationId, { profileUsed: activeProfile, subjectId,
             sessionPalId: mode === 'naya' ? config.nayaPalId : config.drPawsPalId,
-            sessionFaceId: mode === 'naya' ? config.nayaFaceId : config.drPawsFaceId }); }
+            sessionFaceId: mode === 'naya' ? config.nayaFaceId : config.drPawsFaceId });
+            if (assessment) await assessments.recordStarted(session.conversationId, { subjectId, ...assessment, durationMinutes: durationSeconds / 60 }); }
           catch (error) {
             try { await selectedClient.endConversation(session.conversationId); } catch { /* Prevent an orphaned call. */ }
             throw error;
@@ -236,7 +269,8 @@ export function createNayaServer({ client: injectedClient, gemini = geminiConfig
         return;
       }
 
-      const file = request.method === 'GET' ? files.get(['/naia', '/naya', '/dr-paws'].includes(path) ? '/' : path) : undefined;
+      const file = request.method === 'GET' ? files.get(path === '/dr-paws/dashboard' ? '/dashboard.html' :
+        ['/naia', '/naya', '/dr-paws'].includes(path) ? '/' : path) : undefined;
       if (request.method === 'GET' && path === '/daily-esm.js') {
         const body = await readFile(join(root, 'node_modules', '@daily-co', 'daily-js', 'dist', 'daily-esm.js'));
         response.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
@@ -272,7 +306,7 @@ export function createNayaServer({ client: injectedClient, gemini = geminiConfig
       });
       response.end(body);
     } catch (error) {
-      if (error instanceof TavusError || error instanceof SubjectError) {
+      if (error instanceof TavusError || error instanceof SubjectError || error instanceof AssessmentError) {
         json(response, error.status, { error: error.message, code: error.code });
       } else if (error instanceof StorageError) {
         json(response, 503, { error: 'Penyimpanan memori belum tersedia.', code: error.code });
