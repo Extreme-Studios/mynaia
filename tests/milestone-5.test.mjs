@@ -79,7 +79,7 @@ test('PWA statis aman dan self-view compact terpisah dari avatar', async () => {
   assert.match(html, /rel="manifest"/);
   assert.match(html, /apple-mobile-web-app-capable/);
   assert.match(html, /value="20"/);
-  assert.match(html, /Durasi panjang memakai lebih banyak menit Tavus/);
+  assert.match(html, /Durasi panjang memakai lebih banyak menit percakapan/);
   assert.match(html, /id="room-layout"/);
   assert.match(html, /id="self-view"/);
   assert.match(html, /id="self-view-toggle"/);

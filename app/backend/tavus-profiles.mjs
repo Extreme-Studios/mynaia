@@ -7,7 +7,7 @@ export const ACTIVE_PROFILE_KEY = 'tavus_active_profile';
 export function parseProfile(value) {
   const number = Number(value);
   if (!Number.isInteger(number) || number < 1 || number > PROFILE_COUNT || String(value).trim() !== String(number)) {
-    throw new TavusError('INVALID_PROFILE', 'Pilih profil Tavus 1 sampai 8.', 400);
+    throw new TavusError('INVALID_PROFILE', 'Pilih Profil 1 sampai 8.', 400);
   }
   return number;
 }
@@ -30,10 +30,10 @@ export function resolveTavusProfile(number, env = process.env) {
 
 export function modeProfileError(config, mode) {
   if (mode === 'naya' && (!config.apiKey || !config.nayaPalId || !config.nayaFaceId)) {
-    return new TavusError('PROFILE_NOT_CONFIGURED', `Naia belum dikonfigurasi untuk Tavus ${config.profile}.`, 503);
+    return new TavusError('PROFILE_NOT_CONFIGURED', `Naia belum dikonfigurasi untuk Profil ${config.profile}.`, 503);
   }
   if (mode === 'dr_paws' && (!config.apiKey || !config.drPawsPalId || !config.drPawsFaceId)) {
-    return new TavusError('PROFILE_NOT_CONFIGURED', `Dr. Paws belum dikonfigurasi untuk Tavus ${config.profile}.`, 503);
+    return new TavusError('PROFILE_NOT_CONFIGURED', `Dr. Paws belum dikonfigurasi untuk Profil ${config.profile}.`, 503);
   }
   return null;
 }

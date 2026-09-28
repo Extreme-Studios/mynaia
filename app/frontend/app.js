@@ -152,8 +152,8 @@ function fullscreenActive() { return Boolean(document.fullscreenElement || fulls
 function friendlyCallError(message = '') {
   if (/microphone|mikrofon|permission|izin/i.test(message)) return `${modeName} membutuhkan akses mikrofon. Periksa izin browser lalu coba lagi.`;
   if (/offline|network|fetch|koneksi/i.test(message)) return 'Koneksi terganggu. Periksa internet lalu coba lagi.';
-  if (/PAL|profil|config|konfigurasi/i.test(message)) return `${modeName} belum siap digunakan. Periksa Tavus Engine di Pengaturan.`;
-  if (/kuota|quota|limit|rate|credit|usage/i.test(message)) return 'Sesi belum dapat dimulai saat ini. Periksa penggunaan profil Tavus aktif di Pengaturan.';
+  if (/PAL|profil|config|konfigurasi/i.test(message)) return `${modeName} belum siap digunakan. Periksa Profil API di Pengaturan.`;
+  if (/kuota|quota|limit|rate|credit|usage/i.test(message)) return 'Sesi belum dapat dimulai saat ini. Periksa penggunaan profil API aktif di Pengaturan.';
   if (/supabase|penyimpanan|memori/i.test(message)) return 'Ingatan sedang tidak tersedia. Coba lagi sebentar.';
   return message ? 'Sesi belum dapat dimulai saat ini. Coba lagi sebentar.' : '';
 }
@@ -408,12 +408,12 @@ async function refreshAdminProfiles() {
   for (const item of data.profiles) {
     const option = document.createElement('option');
     option.value = String(item.profile);
-    option.textContent = `Tavus ${item.profile} — ${item.configured ? 'Configured' : item.apiConfigured ? 'Partially configured' : 'Not configured'}`;
+    option.textContent = `Profil ${item.profile} — ${item.configured ? 'Configured' : item.apiConfigured ? 'Partially configured' : 'Not configured'}`;
     select.append(option);
   }
   select.value = String(data.active);
   const selected = data.profiles.find((item) => item.active);
-  $('#admin-profile-status').textContent = `Aktif: Tavus ${data.active}. Naia: ${selected?.nayaConfigured ? 'siap' : 'belum dikonfigurasi'}. Dr. Paws: ${selected?.drPawsConfigured ? 'siap' : 'belum dikonfigurasi'}.`;
+  $('#admin-profile-status').textContent = `Aktif: Profil ${data.active}. Naia: ${selected?.nayaConfigured ? 'siap' : 'belum dikonfigurasi'}. Dr. Paws: ${selected?.drPawsConfigured ? 'siap' : 'belum dikonfigurasi'}.`;
   $('#admin-message').textContent = '';
 }
 
@@ -422,7 +422,7 @@ async function refreshAdmin() {
     await refreshAdminProfiles();
   } catch {
     $('#admin-controls').hidden = true;
-    $('#admin-message').textContent = 'Pengaturan Tavus tidak tersedia.';
+    $('#admin-message').textContent = 'Pengaturan profil tidak tersedia.';
   }
 }
 
@@ -443,7 +443,7 @@ $('#admin-inspect').addEventListener('click', async () => {
     const result = await apiRequest('/api/admin/tavus-profile/inspect', { method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ profile: Number($('#admin-profile').value) }) });
-    $('#admin-message').textContent = `Tavus ${result.profile}: autentikasi ${result.apiAuthenticated ? 'berhasil' : 'belum ada key'}; Naia PAL ${result.nayaPalAccessible ? 'tersedia' : 'belum tersedia'}; Dr. Paws PAL ${result.drPawsPalAccessible ? 'tersedia' : 'belum tersedia'}; Face Naia ${result.nayaFaceAccessible ? 'tersedia' : 'belum tersedia'}; Face Dr. Paws ${result.drPawsFaceAccessible ? 'tersedia' : 'belum tersedia'}.`;
+    $('#admin-message').textContent = `Profil ${result.profile}: autentikasi ${result.apiAuthenticated ? 'berhasil' : 'belum ada key'}; Naia PAL ${result.nayaPalAccessible ? 'tersedia' : 'belum tersedia'}; Dr. Paws PAL ${result.drPawsPalAccessible ? 'tersedia' : 'belum tersedia'}; Face Naia ${result.nayaFaceAccessible ? 'tersedia' : 'belum tersedia'}; Face Dr. Paws ${result.drPawsFaceAccessible ? 'tersedia' : 'belum tersedia'}.`;
   } catch (error) { $('#admin-message').textContent = error.message; }
   finally { $('#admin-inspect').disabled = false; }
 });
