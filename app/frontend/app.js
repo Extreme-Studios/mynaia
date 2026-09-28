@@ -1,7 +1,7 @@
-import { createConversationController } from './controller.mjs?v16';
-import { createSelfView } from './self-view.mjs?v16';
-import { startProductMotion, animateVisible, setupPageTransitions } from './motion.mjs?v16';
-import { createCinematic } from './cinematic.js?v16';
+import { createConversationController } from './controller.mjs?v17';
+import { createSelfView } from './self-view.mjs?v17';
+import { startProductMotion, animateVisible, setupPageTransitions } from './motion.mjs?v17';
+import { createCinematic } from './cinematic.js?v17';
 
 const $ = (selector) => document.querySelector(selector);
 const mode = location.pathname === '/dr-paws' ? 'dr_paws' : 'naya';

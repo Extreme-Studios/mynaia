@@ -18,7 +18,7 @@ Precall pages keep a focused version of the same scene behind the character invi
 
 ## PWA and validation
 
-Static cache v16 includes the bundled Three.js entry, GSAP, and app shell. Navigation is network-first; `/api/` bypasses the service worker, and Daily video code is loaded only on Start. A controller update reloads the page only when no call is active.
+Static cache v17 includes the bundled Three.js entry, GSAP, and app shell. Navigation is network-first; `/api/` bypasses the service worker, and Daily video code is loaded only on Start. A controller update reloads the page only when no call is active.
 
 QA must cover first open, home, both precall modes, mocked call, fullscreen and end states at desktop and mobile dimensions. Mock screens never call Tavus. Automated checks verify the scene architecture, adaptive quality, fallbacks, frontend contracts, and backend mocks. Human approval is still required for visual judgment and real device/call behavior.
 
