@@ -11,8 +11,8 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
-  <link rel="stylesheet" href="/styles.css?v=8">
-  <script type="module" src="/app.js?v=8"></script>
+  <link rel="stylesheet" href="/styles.css?v=9">
+  <script type="module" src="/app.js?v=9"></script>
   <title>MyNaiA — Teman AI</title>
 </head>
 <body>
@@ -40,18 +40,18 @@
 
     <section id="call-view" class="call-view" hidden>
       <div class="call-heading"><a class="back-link" href="/" aria-label="Kembali ke Beranda">← <span>Beranda</span></a><div><p class="eyebrow">VIDEO CONVERSATION</p><h1 id="mode-title">Naya</h1></div><span id="mode-badge" class="mode-badge">AI companion</span></div>
-      <div id="stage" class="stage" aria-label="Area video percakapan">
+      <div id="room-layout" class="room-layout"><div id="stage" class="stage" aria-label="Area video percakapan">
         <div id="placeholder" class="placeholder"><div id="avatar-mark" class="avatar-mark">N</div><h2 id="placeholder-title">Siap ngobrol?</h2><p id="placeholder-description">Pilih durasi, lalu mulai saat kamu siap.</p></div>
-        <iframe id="conversation-frame" title="Ruang panggilan video Tavus" allow="camera; microphone; fullscreen; display-capture; autoplay" allowfullscreen hidden></iframe>
         <div id="status" class="status" role="status" aria-live="polite"><span class="status-dot"></span><span id="status-text">Ready</span></div>
         <button id="exit-fullscreen" class="exit-fullscreen icon-button" type="button" aria-label="Keluar dari layar penuh" hidden>✕</button>
-      </div>
+      </div><aside id="self-view" class="self-view" aria-label="Preview kamera Anda" hidden><video id="self-view-video" autoplay muted playsinline></video><span>Anda</span></aside></div>
       <div id="error" class="error" role="alert" hidden></div>
       <div id="offline" class="offline-note" role="status" hidden>Koneksi internet diperlukan untuk ngobrol dengan MyNaiA.</div>
       <div id="precall" class="precall"><div id="subject-panel" class="subject-panel" hidden><label for="subject-select">Siapa yang akan ngobrol?</label><select id="subject-select" aria-label="Profil anak"></select><button id="subject-add-toggle" type="button">+ Tambah profil</button><form id="subject-add-form" hidden><input id="subject-name" type="text" maxlength="80" placeholder="Nama profil" required autocomplete="off"><input id="subject-nickname" type="text" maxlength="80" placeholder="Nama panggilan (opsional)" autocomplete="off"><button type="submit">Simpan</button></form><button id="subject-reset" type="button" disabled>Reset ingatan Dr. Paws untuk profil ini</button><p id="subject-message" role="status"></p></div><label for="duration">Durasi sesi</label><select id="duration" aria-label="Durasi sesi"><option value="3">3 menit</option><option value="5" selected>5 menit</option><option value="10">10 menit</option><option value="20">20 menit</option></select><p id="duration-warning" class="duration-warning" hidden>Durasi panjang memakai lebih banyak menit Tavus.</p></div>
       <div class="controls" aria-label="Kontrol percakapan">
         <button id="start" class="primary-button" type="button">Mulai Ngobrol</button>
         <button id="mic-help" class="control-button" type="button" aria-label="Kontrol mikrofon di dalam video" hidden>🎙 <span>Mikrofon</span></button>
+        <button id="self-view-toggle" class="control-button" type="button" aria-pressed="true" hidden>Self View: Compact</button>
         <button id="fullscreen" class="control-button" type="button" aria-label="Masuk layar penuh">⛶ <span>Fullscreen</span></button>
         <button id="end" class="end-button" type="button" aria-label="Akhiri panggilan" disabled hidden>■ <span>Akhiri</span></button>
       </div>
@@ -60,7 +60,7 @@
       <details id="debug-panel" class="debug-panel"><summary>Detail uji</summary><p id="debug-text">Memeriksa konfigurasi…</p></details>
     </section>
 
-    <aside id="settings-panel" class="settings-panel" hidden aria-label="Pengaturan"><div class="settings-head"><h2>Pengaturan</h2><button id="settings-close" class="icon-button" type="button" aria-label="Tutup pengaturan">✕</button></div><label for="setting-duration">Durasi default</label><select id="setting-duration"><option value="3">3 menit</option><option value="5">5 menit</option><option value="10">10 menit</option><option value="20">20 menit</option></select><label for="quality">Kualitas video</label><select id="quality" aria-label="Kualitas video"><option value="auto">Auto — adaptif</option><option value="low" disabled>Low — memerlukan advanced video control</option><option value="high" disabled>High — memerlukan advanced video control</option></select><p>Audio tidak diubah. Mode saat ini: <strong id="settings-mode">Beranda</strong>.</p><details id="admin-settings" class="admin-settings"><summary>Tavus Engine</summary><p id="admin-message" role="status"></p><div id="admin-controls" hidden><label for="admin-profile">Profil Tavus</label><select id="admin-profile" aria-label="Tavus Engine"></select><button id="admin-apply" type="button">Gunakan profil</button><button id="admin-inspect" type="button">Periksa konfigurasi</button><p id="admin-profile-status" role="status"></p><p>Usage: check Tavus dashboard.</p></div></details></aside>
+    <aside id="settings-panel" class="settings-panel" hidden aria-label="Pengaturan"><div class="settings-head"><h2>Pengaturan</h2><button id="settings-close" class="icon-button" type="button" aria-label="Tutup pengaturan">✕</button></div><label for="setting-duration">Durasi default</label><select id="setting-duration"><option value="3">3 menit</option><option value="5">5 menit</option><option value="10">10 menit</option><option value="20">20 menit</option></select><p>Audio tidak diubah. Mode saat ini: <strong id="settings-mode">Beranda</strong>.</p><details id="admin-settings" class="admin-settings"><summary>Tavus Engine</summary><p id="admin-message" role="status"></p><div id="admin-controls" hidden><label for="admin-profile">Profil Tavus</label><select id="admin-profile" aria-label="Tavus Engine"></select><button id="admin-apply" type="button">Gunakan profil</button><button id="admin-inspect" type="button">Periksa konfigurasi</button><p id="admin-profile-status" role="status"></p><p>Usage: check Tavus dashboard.</p></div></details></aside>
   </main>
 </body>
 </html>

@@ -1,4 +1,5 @@
 import { createConversationController } from './controller.mjs';
+import { createSelfView } from './self-view.mjs';
 
 const $ = (selector) => document.querySelector(selector);
 const mode = location.pathname === '/dr-paws' ? 'dr_paws' : 'naya';
@@ -14,6 +15,10 @@ let statusChecking = false;
 let wakeLock;
 let fullscreenFallback = false;
 let subjectId = '';
+let room;
+let selfViewMode;
+try { selfViewMode = localStorage.getItem('mynaia.selfView') === 'hidden' ? 'hidden' : 'compact'; }
+catch { selfViewMode = 'compact'; }
 
 $('#home').hidden = !isHome;
 $('#call-view').hidden = isHome;
@@ -34,7 +39,26 @@ function savedDuration() {
 $('#duration').value = savedDuration();
 $('#setting-duration').value = savedDuration();
 $('#duration-warning').hidden = $('#duration').value !== '20';
-$('#quality').value = 'auto';
+
+function updateSelfViewControl() {
+  const compact = selfViewMode === 'compact';
+  $('#self-view-toggle').textContent = compact ? 'Self View: Compact' : 'Self View: Hidden';
+  $('#self-view-toggle').setAttribute('aria-pressed', String(compact));
+  room?.setMode(selfViewMode);
+}
+updateSelfViewControl();
+
+async function mountRoom(url, conversationId) {
+  const { default: Daily } = await import('/daily-esm.js');
+  if (controller.snapshot().session?.conversationId !== conversationId) return;
+  room = createSelfView({ createFrame: Daily.createFrame.bind(Daily), container: $('#stage'),
+    video: $('#self-view-video'), panel: $('#self-view'), layout: $('#room-layout'),
+    onJoined: () => controller.roomLoaded(),
+    onError: () => { if (controller.snapshot().session) controller.end('room-error'); },
+  });
+  room.setMode(selfViewMode);
+  await room.mount(url);
+}
 
 async function apiRequest(path, options = {}) {
   const response = await fetch(path, { cache: 'no-store', ...options });
@@ -114,6 +138,7 @@ function render(state) {
   $('#end').disabled = !state.canEnd;
   $('#end').hidden = !active;
   $('#mic-help').hidden = !active;
+  $('#self-view-toggle').hidden = !active;
   $('#duration').disabled = active || pending;
   $('#subject-select').disabled = active || pending;
   $('#subject-add-toggle').disabled = active || pending;
@@ -133,9 +158,8 @@ function render(state) {
     mountedUrl = state.session.conversationUrl;
     activeId = state.session.conversationId;
     $('#placeholder').hidden = true;
-    $('#conversation-frame').hidden = false;
-    $('#conversation-frame').src = mountedUrl;
-    $('#debug-text').textContent = `Sesi ${modeName}. Durasi ${$('#duration').value} menit. Status media dilihat dalam video.`;
+    $('#debug-text').textContent = `Sesi ${modeName}. Durasi ${$('#duration').value} menit. Ruang video Daily sedang dibuka.`;
+    mountRoom(mountedUrl, activeId).catch(() => { if (controller.snapshot().session?.conversationId === activeId) controller.end('room-error'); });
     clearTimeout(durationTimer);
     const seconds = state.session.durationSeconds || Number($('#duration').value) * 60;
     durationTimer = setTimeout(() => { if (controller.snapshot().session) controller.end('duration'); }, seconds * 1000);
@@ -156,8 +180,8 @@ function render(state) {
     clearTimeout(durationTimer);
     clearInterval(statusTimer);
     if (fullscreenActive()) exitFullscreen();
-    $('#conversation-frame').removeAttribute('src');
-    $('#conversation-frame').hidden = true;
+    room?.destroy();
+    room = null;
     $('#placeholder').hidden = false;
     mountedUrl = '';
     activeId = '';
@@ -188,9 +212,13 @@ $('#end').addEventListener('click', () => controller.end());
 $('#again').addEventListener('click', () => { location.reload(); });
 $('#mic-help').addEventListener('click', () => {
   $('#mic-hint').textContent = 'Gunakan ikon mikrofon di dalam video untuk mute atau unmute. Jika izin ditolak, aktifkan mikrofon pada pengaturan situs lalu muat ulang.';
-  $('#conversation-frame').focus();
+  $('#stage').querySelector('iframe')?.focus();
 });
-$('#conversation-frame').addEventListener('load', () => controller.roomLoaded());
+$('#self-view-toggle').addEventListener('click', () => {
+  selfViewMode = selfViewMode === 'compact' ? 'hidden' : 'compact';
+  try { localStorage.setItem('mynaia.selfView', selfViewMode); } catch { /* Private browsing. */ }
+  updateSelfViewControl();
+});
 $('#fullscreen').addEventListener('click', () => fullscreenActive() ? exitFullscreen() : enterFullscreen());
 $('#exit-fullscreen').addEventListener('click', exitFullscreen);
 document.addEventListener('fullscreenchange', updateFullscreen);
@@ -204,6 +232,7 @@ window.addEventListener('offline', updateOffline);
 window.addEventListener('pagehide', () => {
   clearInterval(statusTimer);
   releaseWakeLock();
+  room?.destroy();
   if (activeId) navigator.sendBeacon(`/api/conversations/${encodeURIComponent(activeId)}/end`);
 });
 

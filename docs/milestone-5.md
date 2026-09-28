@@ -43,11 +43,15 @@ Allowed durations are exactly 3, 5, 10, or 20 minutes; default 5. Backend maps t
 
 Fullscreen uses the browser Fullscreen API with a fixed `100dvh` fallback. Escape exits the fallback, and End restores the layout. Screen Wake Lock is requested during the call when available and released on End or when the tab is hidden. Offline state blocks Start and explains that internet is required. The Tavus/Daily iframe owns mic mute/unmute; the host mic control points to the real control in the video. The host does not claim a mute state, media permission, Listening, Thinking, or Speaking without media events. `Connected` means the room iframe loaded, not that audio/video quality was verified.
 
-Quality defaults to **Auto** (adaptive WebRTC). Low and High are visible but disabled with “Memerlukan advanced video control”. The current plain Tavus conversation iframe gives the host no verified receive-layer control, so neither option changes the stream. Audio settings are untouched.
+## Self View Layout Patch
+
+Pengaturan kualitas video yang tidak berfungsi dihapus dari Settings. Ruang Tavus kini dimuat melalui Daily JS Prebuilt dengan `showLocalVideo:false`; panel preview lokal ditampilkan terpisah saat track kamera siap. Pada desktop/tablet, avatar mengambil kolom utama dan self-view menjadi card 180 px di kanan. Pada HP, self-view menjadi panel floating maksimal 112 px di kanan bawah area video, dan saat fullscreen panel tetap kecil di atas kontrol. Jika kamera tidak tersedia atau tidak menghasilkan frame, panel disembunyikan. Tidak ada banner self-view di atas avatar.
+
+Tombol **Self View: Compact/Hidden** di kontrol panggilan memakai `localStorage`, default Compact. Hidden hanya mengubah tampilan preview, bukan status kamera atau izin. Sumber PAL, Face, backend conversation, memori, dan audio tidak diubah. Jika track kamera Daily tidak dapat diakses dari host iframe, preview meminta akses video lokal sebagai fallback; stream fallback dihentikan saat disembunyikan atau sesi berakhir. Pengujian mock tidak membuktikan bahwa tampilan Daily di sesi nyata akan menyembunyikan tile lama atau bahwa preview tampil pada setiap browser. Ini perlu validasi manusia tanpa membuat sesi otomatis.
 
 ## PWA and deployment
 
-The vanilla JS app has a manifest named MyNaiA, 192/512 icons, standalone display, theme colors, Apple metadata, and a service worker. The worker caches only the app shell and static files. It bypasses `/api/` entirely and never stores transcripts, context, conversation responses, or secrets. Offline opens the shell with an explicit no-connection message; conversations require a network. The Vercel build copies the static assets and rewrites the deep routes. No new runtime dependencies or framework were added.
+The vanilla JS app has a manifest named MyNaiA, 192/512 icons, standalone display, theme colors, Apple metadata, and a service worker. The worker caches only the app shell and static files. It bypasses `/api/` entirely and never stores transcripts, context, conversation responses, or secrets. Offline opens the shell with an explicit no-connection message; conversations require a network. The Vercel build copies the static assets and Daily JS, then rewrites the deep routes. `@daily-co/daily-js` is the only added runtime dependency.
 
 ## Verification and remaining human checks
 
@@ -55,7 +59,7 @@ Local mock tests cover mode routing and payloads, Face/PAL selection, duration w
 
 Manual plan, only when the user chooses to spend Tavus minutes:
 
-1. Desktop: open production, select Naya, choose 5 minutes and Auto, start once, inspect mic, enter/exit fullscreen, and End.
+1. Desktop: open production, select Naya, choose 5 minutes, start once, inspect mic and the separate self-view card, toggle Compact/Hidden, enter/exit fullscreen, and End.
 2. Phone: install/open PWA where browser offers it, start Naya, check viewport, fullscreen fallback, microphone, and continuity of prior memory.
 3. Optional duration test: select 3 minutes and observe exact expiry; no automated wait or extra session was run.
 4. Dr. Paws: start only after checking minute balance, verify the cartoon Face, Bahasa Indonesia, child-friendly behavior, and absence of Naya personal recall.

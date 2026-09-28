@@ -10,7 +10,7 @@ Setiap profil membutuhkan API key, PAL Naya, PAL Dr. Paws, dan Face masing-masin
 
 Profil 1–8 kini masing-masing memiliki API key, PAL Naya, PAL Dr. Paws, dan dua stock Face yang diverifikasi pada akun terkait. PAL profil 2–8 dibuat atas permintaan pengguna dan ID-nya disimpan khusus per profil di environment lokal/Vercel; PAL profil 1 tidak disalin lintas akun. Start tetap menolak mode yang konfigurasinya hilang. Aplikasi tidak membuat PAL otomatis saat server berjalan. Persistent memory tetap hanya di Supabase dengan identitas `naya_primary_user`; Tavus adalah mesin percakapan yang dapat diganti. Konfigurasi PAL tidak memakai conversation minutes. Kualitas sesi profil baru belum diuji live.
 
-MyNaiA memiliki home `/` dan dua mode `/naya` serta `/dr-paws` pada satu situs `https://mynaia.extremestudiosai.com`. Naya tetap memakai memori Supabase. Dr. Paws memiliki memori ringan per profil anak dengan `subject_id` UUID; transkrip, ringkasan, fakta aman, dan open loop dipisahkan dari Naya serta profil anak lain. UI mobile-first mencakup PWA, fullscreen, Wake Lock, dan durasi 3/5/10/20 menit (default 5). Quality Auto aktif; Low/High dinonaktifkan karena iframe saat ini belum memberi kontrol kualitas stream yang terverifikasi. Rincian dan rencana uji manusia ada di `docs/milestone-5.md`.
+MyNaiA memiliki home `/` dan dua mode `/naya` serta `/dr-paws` pada satu situs `https://mynaia.extremestudiosai.com`. Naya tetap memakai memori Supabase. Dr. Paws memiliki memori ringan per profil anak dengan `subject_id` UUID; transkrip, ringkasan, fakta aman, dan open loop dipisahkan dari Naya serta profil anak lain. UI mobile-first mencakup PWA, fullscreen, Wake Lock, dan durasi 3/5/10/20 menit (default 5). Self-view default Compact berada di kanan pada desktop dan floating kecil pada HP; tombol call UI dapat menyembunyikannya. Pengaturan kualitas video yang tidak didukung sudah dihapus. Rincian dan rencana uji manusia ada di `docs/milestone-5.md`.
 
 ## Dr. Paws Persistent Memory
 
@@ -41,7 +41,7 @@ Salin `.env.example` menjadi `.env` di root proyek lalu isi `TAVUS_API_KEY` dan 
 
 `TAVUS_PAL_ID` tetap diarahkan ke PAL existing `p54bfaf633c5`. Nama historis PAL dan state lokal `app/backend/.naya-gemini-pal.json` tidak mengubah model aktif. PAL lama Milestone 2 tetap ada. Backend menerima model hosted Tavus maupun Gemini BYO lama untuk rollback. Kunci tidak dikirim ke frontend; `GEMINI_API_KEY` tetap tersimpan untuk pekerjaan backend mendatang dan tidak dipakai oleh layer LLM hosted.
 
-Setelah konfigurasi, buka halaman lokal, pilih mode dan durasi, lalu tekan **Mulai Ngobrol** satu kali. Backend hanya menerima 180/300/600/1200 detik (default 300) dan menampilkan ruang resmi di iframe. Tavus/Daily UI di dalam iframe mengelola izin serta mute microphone; gunakan kontrol mic di ruang video. Tekan **Akhiri** untuk menutup sesi melalui backend. Jika browser menolak izin, periksa izin situs dan muat ulang. Browser production memerlukan HTTPS; localhost dapat dipakai untuk pengembangan.
+Setelah konfigurasi, buka halaman lokal, pilih mode dan durasi, lalu tekan **Mulai Ngobrol** satu kali. Backend hanya menerima 180/300/600/1200 detik (default 300) dan menampilkan ruang resmi melalui Daily Prebuilt. Tavus/Daily UI di dalam ruang mengelola izin serta mute microphone; gunakan kontrol mic di ruang video. Tekan **Akhiri** untuk menutup sesi melalui backend. Jika browser menolak izin, periksa izin situs dan muat ulang. Browser production memerlukan HTTPS; localhost dapat dipakai untuk pengembangan.
 
 **Batas biaya:** cek dashboard Tavus Free dan sisa menit sebelum uji nyata. Jangan aktifkan paket berbayar, overage, atau custom Face. Tidak ada panggilan Tavus otomatis saat `npm test`.
 
@@ -57,7 +57,7 @@ Setelah konfigurasi, buka halaman lokal, pilih mode dan durasi, lalu tekan **Mul
 
 ## Batas implementasi
 
-Frontend host mengetahui saat iframe termuat, tetapi belum memiliki event media Tavus/Daily untuk membuktikan status Listening/Thinking/Speaking. Status microphone dan percakapan harus diperiksa di dalam iframe. Kualitas avatar, lip-sync, suara, dan percakapan nyata tetap memerlukan uji manusia. Login multi-user belum dikerjakan. Batasi akses prototype single-user karena semua pengunjung yang dapat membuat conversation akan berbagi satu memori aplikasi. `GET /api/memory/status` hanya menampilkan status dan jumlah sesi pending, tanpa isi memori atau key.
+Frontend host mengetahui saat Daily room bergabung, tetapi belum memiliki event yang membuktikan status Listening/Thinking/Speaking. Status microphone dan percakapan harus diperiksa di dalam ruang video. Kualitas avatar, lip-sync, suara, self-view pada sesi nyata, dan percakapan tetap memerlukan uji manusia. Login multi-user belum dikerjakan. Batasi akses prototype single-user karena semua pengunjung yang dapat membuat conversation akan berbagi satu memori aplikasi. `GET /api/memory/status` hanya menampilkan status dan jumlah sesi pending, tanpa isi memori atau key.
 
 ## Deployment Mynaia
 

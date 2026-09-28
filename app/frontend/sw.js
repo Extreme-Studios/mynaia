@@ -1,5 +1,5 @@
-const CACHE = 'mynaia-static-v8';
-const STATIC = new Set(['/', '/index.html', '/naya', '/dr-paws', '/styles.css', '/app.js', '/controller.mjs',
+const CACHE = 'mynaia-static-v9';
+const STATIC = new Set(['/', '/index.html', '/naya', '/dr-paws', '/styles.css', '/app.js', '/controller.mjs', '/self-view.mjs', '/daily-esm.js',
   '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png']);
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll([...STATIC])).then(() => self.skipWaiting()));

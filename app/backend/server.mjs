@@ -22,6 +22,7 @@ const files = new Map([
   ['/styles.css', ['styles.css', 'text/css; charset=utf-8']],
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/controller.mjs', ['controller.mjs', 'text/javascript; charset=utf-8']],
+  ['/self-view.mjs', ['self-view.mjs', 'text/javascript; charset=utf-8']],
   ['/manifest.webmanifest', ['manifest.webmanifest', 'application/manifest+json']],
   ['/sw.js', ['sw.js', 'text/javascript; charset=utf-8']],
   ['/icons/icon-192.png', ['icons/icon-192.png', 'image/png']],
@@ -234,6 +235,12 @@ export function createNayaServer({ client: injectedClient, gemini = geminiConfig
       }
 
       const file = request.method === 'GET' ? files.get(path === '/naya' || path === '/dr-paws' ? '/' : path) : undefined;
+      if (request.method === 'GET' && path === '/daily-esm.js') {
+        const body = await readFile(join(root, 'node_modules', '@daily-co', 'daily-js', 'dist', 'daily-esm.js'));
+        response.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
+        response.end(body);
+        return;
+      }
       if (!file) {
         json(response, 404, { error: 'Tidak ditemukan.' });
         return;

@@ -18,7 +18,7 @@ export function createConversationController({ api, render }) {
     try {
       session = await api.start();
       if (!session?.conversationId || !session?.conversationUrl) throw new Error('Data conversation tidak lengkap.');
-      // Iframe baru akan dibuka oleh view. Ini belum membuktikan audio tersambung.
+      // Daily room dibuka oleh view. Ini belum membuktikan audio tersambung.
       update();
       return true;
     } catch (error) {
@@ -46,7 +46,8 @@ export function createConversationController({ api, render }) {
       await api.end(current.conversationId);
       session = null;
       phase = 'ended';
-      message = reason === 'duration' ? 'Sesi selesai karena batas durasi.' : 'Sesi telah selesai.';
+      message = reason === 'duration' ? 'Sesi selesai karena batas durasi.' :
+        reason === 'room-error' ? 'Ruang video gagal dibuka. Sesi sudah ditutup.' : 'Sesi telah selesai.';
       update();
       return true;
     } catch (error) {
