@@ -6,6 +6,8 @@ The approved Naia and Dr. Paws videos remain unchanged. Home now uses a 55/45 de
 
 At phone widths the worlds stack with masked portraits and reachable actions. A portrait tablet also stacks to prevent oversized faces. Mock browser checks at 360, 390, 430, 768, 1366, and 1440 px found no horizontal overflow, two playable Home videos, and both actions within the viewport width. Visually inspected screenshots are in `docs/visual-qa/cinematic-polish/`. Keyboard focus activated each character's emphasis. In a mock active call, all decorative videos paused, the cinematic renderer stopped, and no Tavus iframe or conversation was created. Physical-device visual approval remains required.
 
+Production deployment `dpl_2HyriQxLntQEvuxSczhPugD5tHZ2` was READY. The custom domain served release 22, both Home videos played with advancing time, there was no horizontal overflow at 1366 px, and the fresh browser tab reported no console errors or warnings. The captured production view is `docs/visual-qa/cinematic-polish/production-1366.png`.
+
 ## Flow talking hero release — 2026-09-28
 
 Naia and Dr. Paws now have separate 8-second speaking video loops generated from new Google Flow portrait references. Two Veo 3.1 Lite video generations were run once each at 10 Flow credits per clip (20 total); two Nano Banana 2 reference images used 0 credits. No Tavus conversation, new PAL, or live session was used. The loops are decorative and muted in Home/precall; they do not represent the live Tavus avatar, and lip sync/audio quality was not verified.
