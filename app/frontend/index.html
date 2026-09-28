@@ -11,13 +11,13 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
-  <link rel="stylesheet" href="/styles.css?v=17">
+  <link rel="stylesheet" href="/styles.css?v=20">
   <script defer src="/gsap.min.js"></script>
-  <script type="module" src="/app.js?v=17"></script>
+  <script type="module" src="/app.js?v=20"></script>
   <title>MyNaiA — Teman AI</title>
 </head>
 <body>
-  <div id="cinematic-root" aria-hidden="true"><div class="cinematic-css-art"><span></span><span></span></div></div>
+  <div id="cinematic-root" aria-hidden="true"><div class="cinematic-css-art"></div></div>
   <div id="splash" class="splash" role="presentation"><div class="splash-content"><span class="splash-overline">A NEW WAY TO CONNECT</span><strong>MyNaiA</strong><p>Teman AI yang mengenal dan mengingatmu.</p></div><button id="skip-splash" type="button" hidden>Lewati</button></div>
   <section id="access-gate" class="access-gate" aria-labelledby="access-title"><div class="access-card"><span class="brand-mark">M</span><h1 id="access-title">Masuk MyNaiA</h1><p id="access-loading">Memeriksa akses…</p><form id="access-form" class="access-form" hidden><label for="access-code">Password akses</label><div><input id="access-code" name="code" type="password" autocomplete="current-password" required><button type="submit">Masuk</button></div><span id="access-message" role="status"></span></form></div></section>
   <main id="app" class="app-shell" hidden>
@@ -31,11 +31,11 @@
       <h1 id="home-title" class="sr-only">MyNaiA — Teman AI yang mengenal dan mengingatmu.</h1>
       <p class="world-intro">DUA DUNIA · SATU RUANG CERITA</p>
       <div class="character-worlds">
-        <article class="character-zone naya-zone" data-world="naya">
+        <article class="character-zone naya-zone" data-world="naya"><div class="hero-visual" data-hero="naia"><img class="hero-poster" src="/assets/hero/naia-hero-poster.png?v=20" alt="Naia" fetchpriority="high" decoding="async"><video class="hero-loop" muted loop playsinline preload="none" aria-hidden="true" hidden></video></div>
           <div class="zone-copy"><span class="zone-index">01 <i></i> PERSONAL COMPANION</span><h2>Naia</h2><p>Teman ngobrol yang mengenalmu dari waktu ke waktu.</p><a class="zone-cta" href="/naia">Temui Naia <span aria-hidden="true">↗</span></a></div>
         </article>
         <span class="world-divider" aria-hidden="true"></span>
-        <article class="character-zone paws-zone" data-world="paws">
+        <article class="character-zone paws-zone" data-world="paws"><div class="hero-visual" data-hero="dr-paws"><img class="hero-poster" src="/assets/hero/dr-paws-hero-poster.png?v=20" alt="Dr. Paws" fetchpriority="high" decoding="async"><video class="hero-loop" muted loop playsinline preload="none" aria-hidden="true" hidden></video></div>
           <div class="zone-copy"><span class="zone-index">02 <i></i> TEMAN CERITA</span><h2>Dr. Paws</h2><p>Teman cerita yang ramah untuk anak.</p><a class="zone-cta" href="/dr-paws">Temui Dr. Paws <span aria-hidden="true">↗</span></a></div>
         </article>
       </div>
@@ -45,7 +45,7 @@
     <section id="call-view" class="call-view" hidden>
       <div class="call-heading"><a class="back-link" href="/" aria-label="Kembali ke Beranda">← <span>Beranda</span></a><div><p class="eyebrow">RUANG CERITA</p><h1 id="mode-title">Naia</h1></div><span id="mode-badge" class="mode-badge">AI companion</span></div>
       <div id="room-layout" class="room-layout"><div id="stage" class="stage" aria-label="Area video percakapan">
-        <div id="placeholder" class="placeholder"><div id="avatar-mark" class="avatar-mark">N</div><p class="eyebrow">RUANG PERCAKAPAN</p><h2 id="placeholder-title">Siap ngobrol dengan Naia?</h2><p id="placeholder-description">Naia dapat mengingat hal-hal penting dari obrolan sebelumnya.</p></div>
+        <div class="precall-hero hero-visual" data-hero="naia"><img class="hero-poster" src="/assets/hero/naia-hero-poster.png?v=20" alt="Naia" decoding="async"><video class="hero-loop" muted loop playsinline preload="none" aria-hidden="true" hidden></video></div><div id="placeholder" class="placeholder"><div id="avatar-mark" class="avatar-mark">N</div><p class="eyebrow">RUANG PERCAKAPAN</p><h2 id="placeholder-title">Siap ngobrol dengan Naia?</h2><p id="placeholder-description">Naia dapat mengingat hal-hal penting dari obrolan sebelumnya.</p></div>
         <div id="status" class="status" role="status" aria-live="polite"><span class="status-dot"></span><span id="status-text">Ready</span></div>
         <button id="exit-fullscreen" class="exit-fullscreen icon-button" type="button" aria-label="Keluar dari layar penuh" hidden>✕</button>
       </div><aside id="self-view" class="self-view" aria-label="Preview kamera Anda" hidden><video id="self-view-video" autoplay muted playsinline></video><span>Anda</span></aside></div>

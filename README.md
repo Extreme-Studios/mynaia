@@ -66,3 +66,9 @@ Frontend host mengetahui saat Daily room bergabung, tetapi belum memiliki event 
 Repo GitHub private: `Extreme-Studios/mynaia`. Vercel project: `mynaia`; alias Vercel: `https://mynaia.vercel.app`. Domain khusus: `mynaia.extremestudiosai.com` melalui CNAME Domainesia. `npm run build` menyalin frontend ke `public/` saat build; API Vercel ada di `api/handler.js`. Sesi hosted memerlukan `TAVUS_API_KEY` dan `TAVUS_PAL_ID`; memori permanen memerlukan `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, dan `GEMINI_API_KEY` di server Vercel. `NAYA_ACCESS_CODE` membatasi pengunjung yang dapat membuat sesi Tavus. Kode dan API key hanya tersimpan di environment Vercel; `.env`, state PAL lokal, backup rollback, dan `.vercel` tidak dikirim ke GitHub. Vercel tidak membuat PAL otomatis bila ID tidak dikonfigurasi.
 
 Fungsi Vercel tidak menyimpan state sesi di memori. Tavus membatasi conversation sesuai durasi yang dipilih dan tombol **Akhiri** memanggil endpoint Tavus. Jangan mengandalkan frontend sebagai bukti status perangkat atau kualitas percakapan. Bila situs dibuka publik tanpa kode akses, setiap pengunjung dapat memakai menit Tavus.
+
+## Character-first cinematic visuals
+
+Home and precall use regenerated Anna Casual / Naia and Dr. Paws portrait assets. Three.js remains atmospheric (depth, particles, camera, light paths), with no orb/egg substitute characters. The HTML media layer supports required PNG posters and optional muted MP4/WebM loops discovered at build time. Missing/failed videos retain posters; reduced motion, hidden tabs and active calls pause decorative playback. Existing memory, live Tavus, subject/profile and authentication flows are unchanged.
+
+See docs/flow/README.md for exact filenames, asset replacement, and manual Google Flow prompts. The regenerated stills are image-to-video references, not official stock source photos or a claim of exact likeness. Hero videos are decorative and never replace the live Tavus face.

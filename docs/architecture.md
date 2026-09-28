@@ -79,3 +79,9 @@ Skema ada di `supabase/migrations/001_naya_memory.sql`: tujuh tabel berawalan `n
 ## Privasi dan keamanan awal
 
 Kunci API hanya di backend/env lokal. Endpoint sesi kelak perlu autentikasi, rate limit, batas durasi, dan kontrol anggaran sebelum pilot. Pengguna perlu penjelasan bahwa avatar dan suara dihasilkan AI. Detail retensi media/transkrip Tavus dan persetujuan pengguna diperiksa lagi sebelum sesi nyata.
+
+## Character-first cinematic visuals
+
+Home and precall use regenerated Anna Casual / Naia and Dr. Paws portrait assets. Three.js remains atmospheric (depth, particles, camera, light paths), with no orb/egg substitute characters. The HTML media layer supports required PNG posters and optional muted MP4/WebM loops discovered at build time. Missing/failed videos retain posters; reduced motion, hidden tabs and active calls pause decorative playback. Existing memory, live Tavus, subject/profile and authentication flows are unchanged.
+
+See docs/flow/README.md for exact filenames, asset replacement, and manual Google Flow prompts. The regenerated stills are image-to-video references, not official stock source photos or a claim of exact likeness. Hero videos are decorative and never replace the live Tavus face.

@@ -5,7 +5,7 @@ import { join, resolve, extname } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
 const publicDir = join(root, 'public');
-const mime = { '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
+const mime = { '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.json': 'application/json', '.mp4': 'video/mp4', '.webm': 'video/webm', '.webmanifest': 'application/manifest+json' };
 
 createServer(async (request, response) => {
   const url = new URL(request.url, 'http://localhost');
@@ -24,9 +24,11 @@ createServer(async (request, response) => {
     const html = await readFile(join(publicDir, 'index.html'), 'utf8');
     const mock = `<script type="module">
       import { createCinematic } from '/cinematic.js';
+      import { createHeroMedia } from '/hero-media.mjs';
       const params = new URLSearchParams(location.search);
       const state = params.get('state') || 'call';
       const mode = params.get('mode') || 'naya';
+      const heroMedia=createHeroMedia({mode});
       document.body.classList.add('intro-complete');
       document.querySelector('#splash').hidden = true;
       document.querySelector('#access-gate').hidden = true;
@@ -47,6 +49,7 @@ createServer(async (request, response) => {
         document.querySelector('#postcall').hidden = false;
       } else {
         cinematic.setCallActive(true);
+        heroMedia.setCallActive(true);
         document.body.classList.add('call-active');
         document.querySelector('#call-view').classList.add('in-call');
         document.querySelector('#placeholder').hidden = true;

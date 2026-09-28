@@ -1,7 +1,8 @@
-import { createConversationController } from './controller.mjs?v17';
-import { createSelfView } from './self-view.mjs?v17';
-import { startProductMotion, animateVisible, setupPageTransitions } from './motion.mjs?v17';
-import { createCinematic } from './cinematic.js?v17';
+import { createHeroMedia } from './hero-media.mjs?v20';
+import { createConversationController } from './controller.mjs?v20';
+import { createSelfView } from './self-view.mjs?v20';
+import { startProductMotion, animateVisible, setupPageTransitions } from './motion.mjs?v20';
+import { createCinematic } from './cinematic.js?v20';
 
 const $ = (selector) => document.querySelector(selector);
 const mode = location.pathname === '/dr-paws' ? 'dr_paws' : 'naya';
@@ -9,14 +10,17 @@ const isHome = !['/naia', '/naya', '/dr-paws'].includes(location.pathname);
 const modeName = mode === 'naya' ? 'Naia' : 'Dr. Paws';
 const modeReady = { naya: true, dr_paws: false };
 const cinematic = createCinematic({ route: location.pathname === '/naia' ? '/naya' : location.pathname });
+const heroMedia = createHeroMedia({ mode });
 startProductMotion(cinematic);
 setupPageTransitions(cinematic);
 document.querySelectorAll('[data-world]').forEach((zone) => {
   zone.addEventListener('pointerenter', () => cinematic.focusWorld(zone.dataset.world));
   zone.addEventListener('pointerleave', () => cinematic.focusWorld(''));
   zone.addEventListener('focusin', () => cinematic.focusWorld(zone.dataset.world));
+  zone.addEventListener('focusout', () => cinematic.focusWorld(''));
+  zone.addEventListener('pointerdown', () => cinematic.focusWorld(zone.dataset.world));
 });
-addEventListener('pagehide', () => cinematic.destroy(), { once: true });
+addEventListener('pagehide', () => { cinematic.destroy(); heroMedia.destroy(); }, { once: true });
 let accessGranted = false;
 let mountedUrl = '';
 let activeId = '';
@@ -160,6 +164,7 @@ function render(state) {
   const pending = state.phase === 'connecting';
   document.body.classList.toggle('call-active', active);
   cinematic.setCallActive(active);
+  heroMedia.setCallActive(active);
   $('#call-view').classList.toggle('in-call', active);
   $('#start').disabled = !state.canStart || !accessGranted || !navigator.onLine || !modeReady[mode] || (mode === 'dr_paws' && !subjectId);
   $('#start').textContent = state.phase === 'error' ? 'Coba Lagi' : mode === 'naya' ? 'Mulai Ngobrol' : 'Mulai Cerita';

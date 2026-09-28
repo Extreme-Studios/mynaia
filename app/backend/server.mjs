@@ -23,6 +23,7 @@ const files = new Map([
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/controller.mjs', ['controller.mjs', 'text/javascript; charset=utf-8']],
   ['/self-view.mjs', ['self-view.mjs', 'text/javascript; charset=utf-8']],
+  ['/hero-media.mjs', ['hero-media.mjs', 'text/javascript; charset=utf-8']],
   ['/motion.mjs', ['motion.mjs', 'text/javascript; charset=utf-8']],
   ['/manifest.webmanifest', ['manifest.webmanifest', 'application/manifest+json']],
   ['/sw.js', ['sw.js', 'text/javascript; charset=utf-8']],
@@ -247,6 +248,11 @@ export function createNayaServer({ client: injectedClient, gemini = geminiConfig
         response.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
         response.end(body);
         return;
+      }
+      if (request.method === 'GET' && /^\/assets\/hero\/(?:manifest\.json|(?:naia|dr-paws)-hero-(?:poster\.png|loop\.(?:mp4|webm)))$/.test(path)) {
+        const body=await readFile(join(root,'public',path.slice(1)));
+        const type=path.endsWith('.png')?'image/png':path.endsWith('.webm')?'video/webm':path.endsWith('.mp4')?'video/mp4':'application/json';
+        response.writeHead(200, {'content-type':type,'cache-control':'no-cache','x-content-type-options':'nosniff'});response.end(body);return;
       }
       if (request.method === 'GET' && /^\/cinematic(?:-[A-Z0-9]+)?\.js$/.test(path)) {
         const body = await readFile(join(root, 'public', path.slice(1)));

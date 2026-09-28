@@ -1,0 +1,128 @@
+[
+  {
+    "imagesLoaded": true,
+    "route": "/",
+    "scrollWidth": 360,
+    "width": 360
+  },
+  {
+    "imagesLoaded": true,
+    "route": "/",
+    "scrollWidth": 390,
+    "width": 390
+  },
+  {
+    "imagesLoaded": true,
+    "route": "/",
+    "scrollWidth": 430,
+    "width": 430
+  },
+  {
+    "imagesLoaded": true,
+    "route": "/",
+    "scrollWidth": 768,
+    "width": 768
+  },
+  {
+    "imagesLoaded": true,
+    "route": "/",
+    "scrollWidth": 1024,
+    "width": 1024
+  },
+  {
+    "imagesLoaded": true,
+    "route": "/",
+    "scrollWidth": 1366,
+    "width": 1366
+  },
+  {
+    "imagesLoaded": true,
+    "route": "/",
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "imagesLoaded": true,
+    "route": "/naia",
+    "scrollWidth": 360,
+    "width": 360
+  },
+  {
+    "imagesLoaded": true,
+    "route": "/naia",
+    "scrollWidth": 390,
+    "width": 390
+  },
+  {
+    "imagesLoaded": true,
+    "route": "/naia",
+    "scrollWidth": 430,
+    "width": 430
+  },
+  {
+    "imagesLoaded": true,
+    "route": "/naia",
+    "scrollWidth": 768,
+    "width": 768
+  },
+  {
+    "imagesLoaded": true,
+    "route": "/naia",
+    "scrollWidth": 1024,
+    "width": 1024
+  },
+  {
+    "imagesLoaded": true,
+    "route": "/naia",
+    "scrollWidth": 1366,
+    "width": 1366
+  },
+  {
+    "imagesLoaded": true,
+    "route": "/naia",
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "imagesLoaded": true,
+    "route": "/dr-paws",
+    "scrollWidth": 360,
+    "width": 360
+  },
+  {
+    "imagesLoaded": true,
+    "route": "/dr-paws",
+    "scrollWidth": 390,
+    "width": 390
+  },
+  {
+    "imagesLoaded": true,
+    "route": "/dr-paws",
+    "scrollWidth": 430,
+    "width": 430
+  },
+  {
+    "imagesLoaded": true,
+    "route": "/dr-paws",
+    "scrollWidth": 768,
+    "width": 768
+  },
+  {
+    "imagesLoaded": true,
+    "route": "/dr-paws",
+    "scrollWidth": 1024,
+    "width": 1024
+  },
+  {
+    "imagesLoaded": true,
+    "route": "/dr-paws",
+    "scrollWidth": 1366,
+    "width": 1366
+  },
+  {
+    "imagesLoaded": true,
+    "route": "/dr-paws",
+    "scrollWidth": 1440,
+    "width": 1440
+  }
+]

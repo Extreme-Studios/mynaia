@@ -22,12 +22,8 @@ export function createCinematic({ route = '/', rendererMode = 'auto' } = {}) {
   const target = { x: 0, y: 0 };
 
   function positionRoute() {
-    if (route === '/') return;
-    const selected = (route === '/naya' ? world.naya : world.paws).group;
-    selected.position.set(0, innerWidth < 680 ? 1.75 : 0.9, -0.4);
-    selected.scale.setScalar(innerWidth < 680 ? 0.52 : 1);
+    root.dataset.world = focus;
   }
-
   function applySize() {
     if (!renderer) return;
     const width = innerWidth, height = innerHeight;
@@ -47,8 +43,6 @@ export function createCinematic({ route = '/', rendererMode = 'auto' } = {}) {
       world.camera.position.x += ((focus === 'naya' ? -0.36 : focus === 'paws' ? 0.36 : 0) + target.x - world.camera.position.x) * 0.025;
       world.camera.position.y += (target.y - world.camera.position.y) * 0.025;
     }
-    world.naya.core.rotation.y = Math.sin(time) * 0.17;
-    world.paws.core.rotation.y = -Math.sin(time * 0.8) * 0.2;
     world.naya.group.rotation.z = Math.sin(time * 0.7) * 0.025;
     world.paws.group.rotation.z = -Math.sin(time * 0.8) * 0.03;
     world.dust.rotation.y = time * 0.007;
@@ -66,9 +60,11 @@ export function createCinematic({ route = '/', rendererMode = 'auto' } = {}) {
     renderer?.dispose(); renderer = null;
   }
   function onPointer(event) {
-    if (intro || reducedMotion()) return;
+    if (intro || reducedMotion() || callActive) return;
     pointer.x = (event.clientX / innerWidth - 0.5) * 0.34;
     pointer.y = (0.5 - event.clientY / innerHeight) * 0.24;
+    document.documentElement.style.setProperty('--hero-x', `${pointer.x * 30}px`);
+    document.documentElement.style.setProperty('--hero-y', `${-pointer.y * 30}px`);
   }
   function onVisibility() { if (document.hidden) pause(); else resume(); }
   addEventListener('resize', applySize);
@@ -146,6 +142,7 @@ export function createCinematic({ route = '/', rendererMode = 'auto' } = {}) {
   }
   function focusWorld(which = '') {
     focus = which;
+    document.body.dataset.heroFocus = which;
     if (!renderer || intro) return;
     const n = which === 'paws' ? 0.55 : 1;
     const p = which === 'naya' ? 0.55 : 1;
@@ -159,6 +156,7 @@ export function createCinematic({ route = '/', rendererMode = 'auto' } = {}) {
     if (!renderer || reducedMotion() || !window.gsap) return;
     focusWorld(which);
     transitioning = true;
+    document.body.dataset.heroSelected = which;
     return new Promise((resolve) => {
       window.gsap.to(world.camera.position, { x: which === 'naya' ? -1.5 : 1.5, z: 6.2,
         duration: 0.72, ease: 'power2.inOut', onComplete: resolve });

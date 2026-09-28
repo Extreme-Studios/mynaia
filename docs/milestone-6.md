@@ -1,3 +1,5 @@
+> Previous orb-based presentation was rejected. The current character-first patch below supersedes its visual design; prior evidence remains a historical record.
+
 # Milestone 6 — Cinematic 3D rebuild
 
 Status: implementation ready for human visual approval. No live Tavus conversation was created during this rebuild.
@@ -41,3 +43,23 @@ QA must cover first open, home, both precall modes, mocked call, fullscreen and 
 - Custom domain https://mynaia.extremestudiosai.com/ was inspected after deployment. Entry version `app.js?v=17`, renderer WebGPU, one canvas. Home and `/naia` precall displayed correctly. No errors/warnings appeared in console entries captured after the final reload and route navigation.
 - Production screenshots: `visual-qa/production-desktop.jpg` (1366x768), `production-mobile.jpg` (390x844), and `production-naia-precall.jpg` (1366x768).
 - No Start action, microphone/camera permission, live conversation, or Tavus minute usage. Human visual approval remains required; no Milestone 6 PASSED claim.
+
+## Character-first visual fix - 2026-09-28
+
+The orb/egg meshes, nested sphere geometry and orbital rings were removed completely from the active scene. Three.js now draws a restrained depth field, particles, thin atmospheric light paths and the N splash mark; it no longer stands in for either character. WebGPU -> WebGL -> CSS fallback remains. Character visuals are semantic HTML image/video layers above the atmosphere.
+
+The first interim stills were clean crops from the supplied Anna Casual and Dr. Paws screenshots. At the user's subsequent request, both were replaced with regenerated high-resolution 1086x1448 PNGs from built-in imagegen, preserving the reference face/fur/hair and clothing. They are regenerated AI assets, not official original Tavus stills; exact likeness is subject to human review. No screenshot UI, badges or overlay text remains.
+
+Home is one immersive two-zone scene: Naia on the left and Dr. Paws on the right, masked large portraits, soft backlight, descriptive HTML and clear CTA. Mobile stacks the zones with portraits offset to the right and readable copy to the left. Hover, keyboard focus and pointer/tap focus brighten one side and gently recede the other. Pointer parallax moves HTML media at a different depth from the particles. Selection enlarges the chosen portrait and retains the 0.72-second camera transition. Splash duration stays 3.5 seconds.
+
+Precall uses the matching portrait with invitation, duration and existing child-profile controls. Compact/Hidden self-view and real call/fullscreen controls remain unchanged. Active calls hide/pause all decorative videos and Three.js. Reduced motion or hidden documents retain posters and pause loops. Poster data is visual UI, not persistent memory.
+
+### Asset pipeline
+
+Source folder: app/frontend/assets/hero/. Required PNG posters: naia-hero-poster.png and dr-paws-hero-poster.png. Optional loops: naia-hero-loop.mp4/webm and dr-paws-hero-loop.mp4/webm. Build copies approved filenames, removes obsolete generated video copies and writes a manifest from present files. No loops currently exist; missing loops are never requested. Poster remains beneath video until loadeddata, and autoplay/decode/network failure falls back without retrying failed media. The video element is muted, playsinline and looping. No videos are generated or uploaded to Google Flow by this patch.
+
+Flow reference files, production prompts and replacement guide are in docs/flow/. Add reviewed videos locally and rebuild/deploy to activate them. Keep portrait framing, complete head/ears and stable loop seam. Release/cache 20 versions the entry, dependencies, posters and manifest; API responses stay outside the cache.
+
+### Validation
+
+Screenshot QA inspected Home and both precall modes at 1366x768 and 390x844, plus 768px-wide tablet Home, CSS fallback, and mobile mock fullscreen. Files are in docs/visual-qa/character-first/. All heads/ears and CTAs remain visible in the inspected views. All three routes were checked at 360, 390, 430, 768, 1024, 1366 and 1440: 21 combinations, no horizontal overflow and all posters loaded at 1086x1448. Dr. Paws desktop Start bottom is 693px within the 768px viewport. Latest local console returned zero errors/warnings. Mock fullscreen keeps compact self-view, exit and controls visible, with Three.js paused and every hero video paused/hidden. Video-present/loaded/error/autoplay behavior is tested using mocks; no actual generated video loop, live call, physical device or real GPU performance measurement is claimed. Final local gates passed: check, 60/60 tests, build, whitespace check. All tests are local/mock; no Tavus live session or minutes, no new PAL, and no change to stored Tavus voice/persona, memory, API keys, profiles, authentication or transcript ingestion.
