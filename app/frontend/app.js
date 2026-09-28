@@ -1,8 +1,8 @@
-import { createHeroMedia } from './hero-media.mjs?v21';
-import { createConversationController } from './controller.mjs?v21';
-import { createSelfView } from './self-view.mjs?v21';
-import { startProductMotion, animateVisible, setupPageTransitions } from './motion.mjs?v21';
-import { createCinematic } from './cinematic.js?v21';
+import { createHeroMedia } from './hero-media.mjs?v22';
+import { createConversationController } from './controller.mjs?v22';
+import { createSelfView } from './self-view.mjs?v22';
+import { startProductMotion, animateVisible, setupPageTransitions } from './motion.mjs?v22';
+import { createCinematic } from './cinematic.js?v22';
 
 const $ = (selector) => document.querySelector(selector);
 const mode = location.pathname === '/dr-paws' ? 'dr_paws' : 'naya';

@@ -60,11 +60,16 @@ export function createCinematic({ route = '/', rendererMode = 'auto' } = {}) {
     renderer?.dispose(); renderer = null;
   }
   function onPointer(event) {
-    if (intro || reducedMotion() || callActive) return;
+    if (intro || reducedMotion() || callActive || !matchMedia('(hover: hover) and (pointer: fine)').matches ||
+      (event.pointerType && event.pointerType !== 'mouse')) return;
     pointer.x = (event.clientX / innerWidth - 0.5) * 0.34;
     pointer.y = (0.5 - event.clientY / innerHeight) * 0.24;
-    document.documentElement.style.setProperty('--hero-x', `${pointer.x * 30}px`);
-    document.documentElement.style.setProperty('--hero-y', `${-pointer.y * 30}px`);
+    document.documentElement.style.setProperty('--hero-x', `${pointer.x * 18}px`);
+    document.documentElement.style.setProperty('--hero-y', `${-pointer.y * 24}px`);
+    document.documentElement.style.setProperty('--ambient-x', `${pointer.x * 76}px`);
+    document.documentElement.style.setProperty('--ambient-y', `${-pointer.y * 92}px`);
+    document.documentElement.style.setProperty('--back-x', `${-pointer.x * 16}px`);
+    document.documentElement.style.setProperty('--back-y', `${pointer.y * 18}px`);
   }
   function onVisibility() { if (document.hidden) pause(); else resume(); }
   addEventListener('resize', applySize);

@@ -1,5 +1,11 @@
 > Previous orb-based presentation was rejected. The current character-first patch below supersedes its visual design; prior evidence remains a historical record.
 
+## Final cinematic composition polish — 2026-09-28
+
+The approved Naia and Dr. Paws videos remain unchanged. Home now uses a 55/45 desktop composition with no divider element, portrait-sized media masks that dissolve the real video edges, and a shared low-contrast fog layer. Dr. Paws is framed smaller so the full head and doctor coat stay visible. Scene ribbons were removed from the settled Home view; restrained particles and lighting remain. Fine-pointer parallax shifts character media by at most about 3 px, the atmospheric layer by about 13 px, and the background layer in the opposite direction by about 3 px. Focus or hover scales the selected character to 1.02, gently dims the other, and emphasizes the selected copy over 500 ms. The static first-frame title flash is suppressed; the animated intro title remains.
+
+At phone widths the worlds stack with masked portraits and reachable actions. A portrait tablet also stacks to prevent oversized faces. Mock browser checks at 360, 390, 430, 768, 1366, and 1440 px found no horizontal overflow, two playable Home videos, and both actions within the viewport width. Visually inspected screenshots are in `docs/visual-qa/cinematic-polish/`. Keyboard focus activated each character's emphasis. In a mock active call, all decorative videos paused, the cinematic renderer stopped, and no Tavus iframe or conversation was created. Physical-device visual approval remains required.
+
 ## Flow talking hero release — 2026-09-28
 
 Naia and Dr. Paws now have separate 8-second speaking video loops generated from new Google Flow portrait references. Two Veo 3.1 Lite video generations were run once each at 10 Flow credits per clip (20 total); two Nano Banana 2 reference images used 0 credits. No Tavus conversation, new PAL, or live session was used. The loops are decorative and muted in Home/precall; they do not represent the live Tavus avatar, and lip sync/audio quality was not verified.

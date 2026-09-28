@@ -130,6 +130,39 @@ body[data-hero-selected=naya] .naya-zone>.hero-visual,body[data-hero-selected=pa
 }
 @media(prefers-reduced-motion:reduce){.hero-visual{transform:none;transition:none!important;scale:1!important}}
 
+/* Final Home composition: one shared space, with the characters kept clear. */
+.splash-content{visibility:hidden}
+.character-worlds{grid-template-columns:minmax(0,55fr) minmax(0,45fr);isolation:isolate}
+.character-worlds:before{content:"";position:absolute;inset:-8% -4%;z-index:0;pointer-events:none;background:radial-gradient(ellipse 28% 58% at 53% 46%,#4762752b 0%,#31506315 38%,transparent 100%),radial-gradient(ellipse 42% 58% at 68% 46%,#a16b4530 0%,transparent 76%);transform:translate3d(var(--ambient-x,0px),var(--ambient-y,0px),0);transition:transform .45s ease-out}
+#cinematic-root:after{content:"";position:absolute;inset:-20px;pointer-events:none;background:radial-gradient(ellipse 55% 44% at 48% 60%,#324d5d19,transparent 78%);transform:translate3d(var(--back-x,0px),var(--back-y,0px),0);transition:transform .55s ease-out}
+.character-zone{z-index:1}
+.character-zone>.hero-visual{inset:0 auto 19% -3%;width:108%;height:81%;max-width:none;margin:0;transition:transform .48s ease-out,filter .5s ease,opacity .5s ease,scale .5s ease}
+.paws-zone>.hero-visual{inset:-2% auto 16% -18%;width:124%;height:86%}
+.character-zone .hero-poster,.character-zone .hero-loop{mask-image:radial-gradient(ellipse 73% 73% at 50% 47%,#000 54%,#000d 75%,transparent 100%),linear-gradient(to bottom,#000 0 59%,transparent 98%);mask-composite:intersect}
+.paws-zone .hero-poster,.paws-zone .hero-loop{transform:scale(.82);transform-origin:50% 48%}
+.character-zone .zone-copy{padding-bottom:clamp(40px,8vh,90px)}
+.zone-copy{transition:transform .5s ease,filter .5s ease,opacity .5s ease}
+.zone-copy h2{margin:11px 0 12px}
+.zone-copy p{line-height:1.48;margin-bottom:20px}
+.zone-cta{transition:transform .45s ease,background .45s ease,box-shadow .45s ease}
+body[data-hero-focus=naya] .naya-zone>.hero-visual,body[data-hero-focus=paws] .paws-zone>.hero-visual{scale:1.02;filter:brightness(1.08)}
+body[data-hero-focus=naya] .paws-zone>.hero-visual,body[data-hero-focus=paws] .naya-zone>.hero-visual{opacity:.72;filter:brightness(.78)}
+body[data-hero-focus=naya] .naya-zone .zone-copy,body[data-hero-focus=paws] .paws-zone .zone-copy{transform:translateY(-3px);filter:brightness(1.08)}
+body[data-hero-focus=naya] .paws-zone .zone-copy,body[data-hero-focus=paws] .naya-zone .zone-copy{opacity:.8}
+body[data-hero-focus=naya] .naya-zone .zone-cta,body[data-hero-focus=paws] .paws-zone .zone-cta{box-shadow:0 12px 35px #0009,0 0 20px #d8efff30}
+@media(max-width:679px){
+ .character-worlds{grid-template-columns:1fr;grid-template-rows:1fr 1fr}
+ .character-worlds:before{inset:12% -12%;background:radial-gradient(ellipse 65% 35% at 60% 49%,#44647b30,transparent 100%),radial-gradient(ellipse 55% 35% at 43% 73%,#ae79402b,transparent 100%);transform:none}
+ .character-zone{min-height:300px;height:calc((100dvh - 145px)/2);max-height:430px}
+ .character-zone>.hero-visual{inset:-3% -10% auto auto;width:91%;height:95%;transform:none}
+ .paws-zone>.hero-visual{inset:-3% -13% auto auto;width:93%;height:99%}
+ .paws-zone .hero-poster,.paws-zone .hero-loop{transform:scale(.82);transform-origin:57% 42%}
+ .character-zone .zone-copy{padding-bottom:17px;max-width:57%}
+ .character-zone .zone-copy h2{margin:7px 0 7px}
+ .character-zone .zone-copy p{margin-bottom:11px}
+}
+@media(prefers-reduced-motion:reduce){.character-worlds:before,#cinematic-root:after{transform:none;transition:none}.zone-copy,.zone-cta{transition:none}}
+
 /* Mask the actual media bounds, including wide temporary screenshot crops. */
 .hero-poster,.hero-loop{position:absolute;top:50%;left:0;inset:auto;left:0;width:100%;height:auto;max-height:none;transform:translateY(-50%);object-fit:contain;mask-image:linear-gradient(90deg,transparent,#000 10%,#000 84%,transparent),linear-gradient(0deg,transparent,#000 24%,#000 80%,transparent)}
 
@@ -150,3 +183,26 @@ body[data-hero-focus=naya] .naya-zone .zone-copy,body[data-hero-focus=paws] .paw
 .hero-loop:not([hidden]){animation:heroLoopReveal .45s ease both}
 @keyframes heroLoopReveal{from{opacity:0}to{opacity:1}}
 @media(prefers-reduced-motion:reduce){.zone-copy{transition:none;transform:none!important}.hero-loop{animation:none!important}}
+
+/* Match the Home media box to the portrait source so the mask reaches its real edges. */
+.character-worlds{overflow:hidden}
+.character-worlds:after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;background:radial-gradient(ellipse 21% 46% at 54% 44%,#668fa11c,transparent 100%)}
+.character-zone>.hero-visual{top:-4%;bottom:auto;left:49%;right:auto;width:auto;height:108%;aspect-ratio:.77;max-width:none;margin:0;transform:translate3d(calc(-50% + var(--hero-x,0px)),var(--hero-y,0px),0)}
+.paws-zone>.hero-visual{top:5%;left:48%;height:85%}
+.character-zone .hero-poster,.character-zone .hero-loop{inset:0;width:100%;height:100%;object-fit:cover;object-position:center;mask-image:linear-gradient(90deg,transparent 0%,#000 12%,#000 87%,transparent 100%),linear-gradient(180deg,transparent 0%,#000 10%,#000 74%,transparent 100%);mask-composite:intersect}
+.paws-zone .hero-poster,.paws-zone .hero-loop{transform:none}
+#home [data-media="video"] .hero-poster{opacity:0}
+@media(min-width:680px) and (max-width:1099px){.character-zone>.hero-visual{top:0;height:95%;left:50%}.paws-zone>.hero-visual{height:82%;left:47%}}
+@media(max-width:679px){
+ .character-zone>.hero-visual{top:-1%;bottom:auto;left:auto;right:-4%;width:auto;height:103%;max-width:none;transform:none}
+ .paws-zone>.hero-visual{top:7%;right:0;height:81%}
+}
+@media(min-width:680px) and (max-width:900px) and (orientation:portrait){
+ .home-view{height:auto;min-height:calc(100dvh - 72px)}
+ .character-worlds{grid-template-columns:1fr;grid-template-rows:repeat(2,minmax(0,1fr));min-height:calc(100dvh - 130px)}
+ .character-zone{min-height:390px;height:calc((100dvh - 135px)/2);max-height:510px;padding:0 40px}
+ .character-zone>.hero-visual{top:-3%;left:auto;right:5%;height:105%;transform:none}
+ .paws-zone>.hero-visual{top:4%;right:9%;height:91%}
+ .character-zone .zone-copy{padding-bottom:30px;max-width:330px}
+ .character-worlds:after{background:radial-gradient(ellipse 50% 20% at 50% 52%,#668fa11c,transparent 100%)}
+}

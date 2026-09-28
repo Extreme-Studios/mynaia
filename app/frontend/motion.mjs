@@ -31,10 +31,11 @@ export function startProductMotion(cinematic) {
   skip.addEventListener('click', finish);
   if (!plan.duration) { finish(); return; }
   cinematic?.playIntro(plan.duration);
-  if (!window.gsap) { setTimeout(finish, Math.round(plan.duration * 1000)); return; }
+  if (!window.gsap) { finish(); return; }
   const gsap = window.gsap;
   if (plan.full) {
     timeline = gsap.timeline({ onComplete: finish });
+    timeline.set('.splash-content', { visibility: 'visible' }, 1.1);
     timeline.fromTo('.splash-content strong', { opacity: 0, y: 20, filter: 'blur(12px)' },
       { opacity: 1, y: 0, filter: 'blur(0px)', duration: 1, ease: 'power2.out' }, 1.2)
       .fromTo('.splash-overline', { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.6 }, 1.1)
@@ -44,7 +45,8 @@ export function startProductMotion(cinematic) {
     skipTimer = setTimeout(() => { if (!finished) skip.hidden = false; }, 2000);
   } else {
     timeline = gsap.timeline({ onComplete: finish });
-    timeline.fromTo('.splash-content', { opacity: 0, scale: 0.97 }, { opacity: 1, scale: 1, duration: plan.duration * 0.55 })
+    timeline.set('.splash-content', { visibility: 'visible' }, 0)
+      .fromTo('.splash-content', { opacity: 0, scale: 0.97 }, { opacity: 1, scale: 1, duration: plan.duration * 0.55 })
       .to(splash, { opacity: 0, duration: plan.duration * 0.45 });
   }
 }

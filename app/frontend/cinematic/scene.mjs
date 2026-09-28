@@ -7,7 +7,6 @@ function ribbon(points, color, opacity = 0.12) {
 }
 function atmosphere(color, direction) {
   const group = new THREE.Group();
-  for (let i=0;i<3;i++) group.add(ribbon([[-6,-3+i,-5],[-3,0+i*.4,-8],[2,2+i,-10],[6,4+i,-12]],color));
   const light = new THREE.PointLight(color,12,9); light.position.set(direction*2,0,-3); group.add(light);
   return {group,light};
 }
