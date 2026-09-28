@@ -1,6 +1,7 @@
 export const PRIMARY_USER_ID = 'naya_primary_user';
 const TABLES = new Set(['users','conversation_sessions','conversation_messages','memories','user_profile','open_loops','session_summaries','subjects','app_settings',
-  'assessment_templates','assessment_consents','assessment_sessions','assessment_analyses','assessment_reports','assessment_report_revisions']);
+  'assessment_templates','assessment_consents','assessment_sessions','assessment_analyses','assessment_reports','assessment_report_revisions',
+  'reviewers','case_sources','case_audit','longitudinal_analyses','follow_up_plans','longitudinal_reports','longitudinal_report_revisions']);
 
 export class StorageError extends Error {
   constructor(code) { super(code); this.name = 'StorageError'; this.code = code; }
@@ -47,7 +48,7 @@ export function makeSupabaseStore({ url = process.env.SUPABASE_URL, key = proces
   const remove = (table, filters) => query(table, { method: 'DELETE', filters });
   async function rpc(name, body) {
     if (!configured) throw new StorageError('SUPABASE_NOT_CONFIGURED');
-    if (!['naya_delete_assessment_session','naya_delete_child_profile'].includes(name)) throw new StorageError('SUPABASE_RPC_INVALID');
+    if (!['naya_delete_assessment_session','naya_delete_child_profile','naya_delete_case_source'].includes(name)) throw new StorageError('SUPABASE_RPC_INVALID');
     let response;
     try { response = await fetchImpl(new URL(`/rest/v1/rpc/${name}`, origin), { method: 'POST',
       headers: { apikey: key, ...(key.startsWith('sb_secret_') ? {} : { authorization: `Bearer ${key}` }),

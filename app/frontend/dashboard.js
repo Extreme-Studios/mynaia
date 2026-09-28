@@ -27,6 +27,13 @@ async function api(action, { id, method = 'GET', body } = {}) {
   if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
   return data;
 }
+async function caseApi(action, body) {
+  const response = await fetch(`/api/dr-paws/case?action=${encodeURIComponent(action)}`, { method: body ? 'POST' : 'GET', cache: 'no-store',
+    ...(body ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}) });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+  return data;
+}
 function notice(message) { $('#notice').hidden = false; $('#notice').textContent = message; }
 function cardText(container, title, lines = []) {
   const card = make('div', '', 'item'); card.append(make('strong', title));
@@ -34,7 +41,12 @@ function cardText(container, title, lines = []) {
   container.append(card); return card;
 }
 async function refresh() {
-  [dashboard, { templates }] = await Promise.all([api('dashboard'), api('templates')]);
+  let reviewerData;
+  [dashboard, { templates }, reviewerData] = await Promise.all([api('dashboard'), api('templates'), caseApi('reviewers')]);
+  const reviewerSelect = $('#reviewer'), storedReviewer = localStorage.getItem('mynaia.reviewerId');
+  reviewerSelect.replaceChildren(new Option('Pilih reviewer', ''));
+  for (const item of reviewerData.reviewers) reviewerSelect.add(new Option(`${item.display_name} · ${item.professional_role}`, item.id));
+  if (reviewerData.reviewers.some((item) => item.id === storedReviewer)) reviewerSelect.value = storedReviewer;
   const stats = $('#overview'); stats.replaceChildren();
   for (const [label, value] of [['Profil anak', dashboard.counts.children], ['Perlu diproses', dashboard.counts.pending],
     ['Draf laporan', dashboard.counts.draft], ['Sudah ditinjau', dashboard.counts.reviewed]]) {
@@ -47,6 +59,7 @@ async function refresh() {
     const card = cardText(children, child.display_name, [child.nickname ? `Panggilan: ${child.nickname}` : '']);
     const button = make('button', 'Lihat profil', 'secondary'); button.type = 'button';
     button.addEventListener('click', () => showChild(child.id)); card.append(button);
+    const caseLink = make('a', 'Buka kasus longitudinal', 'secondary'); caseLink.href = `/dr-paws/dashboard/subjects/${encodeURIComponent(child.id)}`; card.append(caseLink);
   }
   if (!dashboard.children.length) children.append(make('p', 'Belum ada profil. Tambahkan profil melalui layar Dr. Paws.', 'muted'));
   const templateSelect = $('#template'); templateSelect.replaceChildren(new Option('Pilih template', ''));
@@ -57,8 +70,14 @@ async function refresh() {
       [date(session.created_at), `${session.planned_duration_minutes} menit · ${session.status}`, session.summary]);
     const pill = make('span', session.report_status || 'Laporan menunggu', 'pill'); card.append(pill);
     const button = make('button', 'Lihat sesi', 'secondary'); button.type = 'button'; button.addEventListener('click', () => showSession(session.id)); card.append(button);
+    const caseLink = make('a', 'Lihat kasus', 'secondary'); caseLink.href = `/dr-paws/dashboard/subjects/${encodeURIComponent(session.subject_id)}`; card.append(caseLink);
   }
   if (!dashboard.sessions.length) sessions.append(make('p', 'Belum ada sesi terstruktur.', 'muted'));
+  const requestedSession = new URLSearchParams(location.search).get('session');
+  if (requestedSession && dashboard.sessions.some((item) => item.id === requestedSession)) {
+    history.replaceState(null, '', '/dr-paws/dashboard');
+    await showSession(requestedSession);
+  }
 }
 async function showChild(id) {
   const data = await api('child', { id });
@@ -249,7 +268,9 @@ function drawReport(box, data) {
     button.addEventListener('click', async () => {
       try {
         const lines = (value) => value.split('\n').map((s) => s.trim()).filter(Boolean);
-        await api('report', { id: data.session.id, method: 'POST', body: { version: report.version, status,
+        const reviewerId = $('#reviewer').value;
+        if (!reviewerId) throw new Error('Pilih atau buat profil reviewer sebelum menyimpan laporan.');
+        await api('report', { id: data.session.id, method: 'POST', body: { version: report.version, status, reviewerId,
           confirmProfessional: status === 'final' && confirm.checked,
           professionalNotes: notes.value, content: { purpose: purpose.value, summary: summary.value,
             conclusion: conclusion.value, insufficient: lines(insufficient.value), follow_up: lines(followUp.value),
@@ -266,6 +287,12 @@ function drawReport(box, data) {
   if (data.revisions.length) box.append(make('p', `Riwayat revisi: ${data.revisions.map((r) => `v${r.version} ${r.previous_status}`).join(' · ')}`, 'muted'));
 }
 $('#close-detail').addEventListener('click', () => { $('#detail-panel').hidden = true; });
+$('#reviewer').addEventListener('change', () => localStorage.setItem('mynaia.reviewerId', $('#reviewer').value));
+$('#reviewer-form').addEventListener('submit', async (event) => { event.preventDefault(); try {
+  const result = await caseApi('reviewer', { displayName: $('#reviewer-name').value, professionalRole: $('#reviewer-role').value });
+  localStorage.setItem('mynaia.reviewerId', result.id); $('#reviewer-form').reset(); await refresh(); notice('Profil reviewer tersimpan.');
+} catch (error) { notice(error.message); } });
+$('#retry').addEventListener('click', () => refresh().then(() => { $('#retry').hidden = true; }).catch((error) => notice(`Data belum berhasil dimuat. ${error.message}`)));
 $('#login').addEventListener('submit', async (event) => {
   event.preventDefault(); $('#login-error').textContent = '';
   try {
@@ -279,6 +306,6 @@ async function boot() {
   if (!status.authorized) { $('#gate').hidden = false; $('#workspace').hidden = true; return; }
   $('#gate').hidden = true; $('#workspace').hidden = false;
   try { await refresh(); $('#consent-panel').hidden = true; }
-  catch (error) { notice(error.message); }
+  catch (error) { notice(`Data belum berhasil dimuat. ${error.message}`); $('#retry').hidden = false; }
 }
 boot().catch((error) => { $('#login-error').textContent = error.message; });

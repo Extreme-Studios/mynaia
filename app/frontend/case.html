@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Kasus Dr. Paws · MyNaiA</title><link rel="stylesheet" href="/dashboard.css?v=2"><link rel="stylesheet" href="/case.css?v=1"><script type="module" src="/case.js?v=1"></script></head>
+<body>
+  <header><a href="/dr-paws/dashboard" class="brand">🐾 Dr. Paws</a><span>Kasus Profesional</span><a href="/dr-paws/dashboard">Dashboard</a></header>
+  <main>
+    <section id="gate" class="panel" hidden><h1>Akses profesional</h1><p>Masukkan password MyNaiA.</p><form id="login"><label>Password <input id="code" type="password" autocomplete="current-password" required></label><button>Masuk</button></form><p id="login-error" role="alert"></p></section>
+    <div id="workspace" hidden>
+      <div class="intro"><div><span class="eyebrow">MYNAIA / DR. PAWS / KASUS</span><h1 id="child-name">Profil anak</h1><p id="case-intro">Perkembangan dari beberapa sesi dan sumber informasi.</p></div><button id="reload" type="button" class="secondary">Muat ulang</button></div>
+      <div id="notice" class="notice" role="status" hidden></div><button id="retry" type="button" class="secondary" hidden>Coba Lagi</button>
+      <section class="panel reviewer-panel"><h2>Identitas reviewer</h2><p class="muted">Nama dan peran ditulis sendiri; aplikasi belum memverifikasi lisensi profesional.</p><label>Reviewer aktif <select id="reviewer"></select></label><details><summary>Tambah profil reviewer</summary><form id="reviewer-form"><label>Nama <input id="reviewer-name" maxlength="100" required></label><label>Peran <input id="reviewer-role" maxlength="100" placeholder="Contoh: psikolog, konselor, orang tua" required></label><label>Organisasi (opsional) <input id="reviewer-organization" maxlength="120"></label><label>Catatan kredensial (opsional; tidak diverifikasi) <input id="reviewer-credential" maxlength="300"></label><button>Simpan reviewer</button></form></details></section>
+      <section id="summary" class="panel"></section>
+      <div class="case-grid"><section id="sources" class="panel"><h2>Cakupan sumber</h2><div id="source-coverage"></div><h3>Tambah informasi</h3><form id="source-form"><label>Jenis sumber <select id="source-type"><option value="PARENT">Orang tua</option><option value="TEACHER">Guru</option><option value="PROFESSIONAL">Observasi profesional</option><option value="OTHER_CAREGIVER">Pengasuh lain</option></select></label><label>Nama sumber <input id="source-name" maxlength="100" required></label><label>Hubungan / konteks <input id="source-relationship" maxlength="100"></label><label>Tanggal observasi <input id="source-date" type="date" required></label><div id="source-fields"></div><label>Catatan tambahan <textarea id="source-notes" rows="3" maxlength="2000"></textarea></label><button>Simpan sumber</button></form><div id="source-list"></div></section>
+      <section id="timeline-panel" class="panel"><h2>Timeline kasus</h2><div id="timeline"></div><h3>Riwayat keselamatan</h3><div id="safety-history"></div></section></div>
+      <section class="panel"><h2>Matriks area per sesi</h2><p class="muted">Dijelajahi / sebagian / belum dijelajahi. Ini bukan skor.</p><div id="coverage-matrix" class="scroll-x"></div></section>
+      <section class="panel"><div class="panel-head"><h2>Analisis longitudinal</h2><button id="refresh-analysis" type="button">Update analysis</button></div><p id="analysis-status" class="muted"></p><div id="analysis"></div></section>
+      <section class="panel"><h2>Hipotesis kerja & riwayat review</h2><div id="hypotheses"></div><div id="hypothesis-history"></div></section>
+      <section class="panel"><h2>Next Session Planner</h2><p class="muted">Tujuan dapat diedit sebelum sesi. Menyimpan rencana tidak memulai Tavus.</p><form id="plan-form"><label>Tujuan percakapan anak, satu per baris <textarea id="plan-goals" rows="5" placeholder="Apa yang ingin dieksplorasi secara netral?"></textarea></label><button>Simpan rencana</button></form><div id="plans"></div></section>
+      <section class="panel"><h2>Laporan longitudinal</h2><div id="report"></div></section>
+      <section class="panel"><h2>Evidence Explorer</h2><div id="evidence-detail">Klik tautan bukti pada pola atau hipotesis untuk melihat sumber asli.</div></section>
+    </div>
+  </main>
+</body></html>

@@ -1,8 +1,12 @@
-# Arsitektur MyNaiA — Milestone 5
+# Arsitektur MyNaiA
+
+## Milestone 8 — kasus longitudinal Dr. Paws
+
+`/dr-paws/dashboard/subjects/:subjectId` memuat sesi dan analisis per sesi yang sudah ada, sumber kolateral `naya_case_sources`, audit reviewer, analisis longitudinal, rencana follow-up, dan laporan versi. Semua request kasus masuk melalui `/api/dr-paws/case`, gerbang password/cookie server, serta filter owner + `subject_id`. Gemini hanya menerima potongan bukti terstruktur dengan referensi asli; seluruh transkrip tidak diulang ke prompt. Refresh manual memakai fingerprint sumber, dan hasil AI selalu preliminary. Reviewer terpilih menandatangani keputusan/versi pada audit, tetapi identitas dan lisensinya belum diverifikasi. PDF longitudinal hanya setelah review. Penghapusan sumber/sesi/profil membersihkan salinan turunan dengan RPC transaksional. PWA tidak menyimpan halaman atau API kasus. Lihat `docs/milestone-8.md`.
 
 ## Milestone 7 — assessment Dr. Paws
 
-Assessment adalah lapisan terpisah di atas sesi Dr. Paws dan memori Supabase yang sudah ada. `/dr-paws/dashboard` memakai password/cookie akses existing. Sebelum sesi terstruktur, backend memvalidasi UUID profil anak, template asli tersimpan, dan consent orang dewasa; lalu menggabungkan tujuan wawancara ringkas dengan konteks memori anak. Catatan profesional hanya dikirim ke konteks realtime bila dipilih eksplisit. Free chat tetap memakai payload lama. Setelah sesi, transkrip yang sudah tersimpan diproses Gemini dengan skema observasi serta referensi nomor giliran anak; laporan disimpan sebagai draf terpisah dari memori, lalu ditinjau manusia. PDF dibuat privat saat diminta dan hanya untuk REVIEWED/FINAL. Seluruh tabel assessment baru memiliki RLS dan akses service role di server; tidak ada public report bucket. Lihat `docs/milestone-7.md` untuk skema, batasan akses prototype single-user, dan validasi.
+Assessment adalah lapisan terpisah di atas sesi Dr. Paws dan memori Supabase yang sudah ada. `/dr-paws/dashboard` memakai password/cookie akses existing. Sebelum sesi terstruktur, backend memvalidasi UUID profil anak, template asli tersimpan, dan consent orang dewasa; lalu menggabungkan tujuan wawancara ringkas dengan konteks memori anak. Catatan profesional hanya dikirim ke konteks realtime bila dipilih eksplisit. Free chat tetap memakai payload lama. Setelah sesi, transkrip yang sudah tersimpan diproses Gemini dengan skema observasi serta referensi nomor giliran anak; laporan disimpan sebagai draf terpisah dari memori, lalu ditinjau manusia. PDF draf satu sesi berlabel preliminary, sedangkan PDF longitudinal memerlukan REVIEWED/FINAL. Seluruh tabel assessment baru memiliki RLS dan akses service role di server; tidak ada public report bucket. Lihat `docs/milestone-7.md` untuk skema, batasan akses prototype single-user, dan validasi.
 
 ## Multi-Tavus Profile Engine
 

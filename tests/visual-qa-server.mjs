@@ -19,6 +19,38 @@ createServer(async (request, response) => {
     response.writeHead(200, { 'content-type': 'application/json' });
     response.end(JSON.stringify({ subjects: [{ id: '00000000-0000-4000-8000-000000000001', display_name: 'Profil demo', nickname: 'Demo' }] })); return;
   }
+  if (url.pathname === '/api/dr-paws/case') {
+    const childId = '00000000-0000-4000-8000-000000000001';
+    const sessionId = '00000000-0000-4000-8000-000000000002';
+    const reviewer = { id:'00000000-0000-4000-8000-000000000004', display_name:'Reviewer demo', professional_role:'Reviewer' };
+    const reference = `t:${sessionId}:1`;
+    const finding = { label:'Interaksi sosial perlu ditelaah', status:'NEW', rationale:'Konteks rumah dan sekolah berbeda.',
+      evidence_strength:'MIXED_EVIDENCE', supporting_refs:[reference], counter_refs:[],
+      missing_information:['Keterangan guru tambahan'], alternative_explanations:['Situasi kelas'], review:null };
+    const result = { summary:'Dalam tiga sesi, anak mulai lebih nyaman bercerita. Pengamatan lintas konteks belum lengkap.',
+      patterns:[{title:'Interaksi teman',status:'REPEATED',evidence_strength:'MIXED_EVIDENCE',
+        description:'Anak merasa lebih nyaman dengan satu teman; guru melaporkan kelompok kecil berjalan lebih baik.',
+        supporting_refs:[reference],counter_refs:[]}], changes:[{description:'Anak lebih terbuka dari sesi pertama ke ketiga.',
+        earlier_refs:[reference],later_refs:[reference]}], strengths:[{text:'Senang menggambar.',evidence_refs:[reference]}],
+      contradictions:[{description:'Keterangan rumah dan kelas berbeda dalam konteks perhatian.',evidence_refs:[reference]}],
+      current_working_hypotheses:[finding],missing_information:['Pengamatan kelas tambahan'],
+      recommended_follow_up:['Jelajahi pengalaman anak bermain bersama teman.'] };
+    const source = { id:'00000000-0000-4000-8000-000000000005',source_type:'PARENT',source_name:'Ibu demo',
+      observed_at:'2026-09-25T10:00:00Z',answers:{strengths:'Suka menggambar.',social_interaction:'Ada satu teman dekat.'},notes:'',version:1 };
+    const action = url.searchParams.get('action');
+    const responseBody = action === 'reviewers' ? { reviewers:[reviewer] } : action === 'case' ? {
+      child:{id:childId,display_name:'Profil demo'},sessionCount:3,latestSession:{created_at:'2026-09-28T09:00:00Z'},
+      timeline:[{kind:'session',id:sessionId,date:'2026-09-28T09:00:00Z',source:'Dr. Paws',status:'reviewed',title:'Sekolah & Belajar',summary:'Mulai lebih terbuka.'},
+        {kind:'source',date:source.observed_at,source:'PARENT',status:'tercatat',title:'Ibu demo',summary:'Ada satu teman dekat.'}],
+      sources:[source],sourceCoverage:{CHILD:true,PARENT:true,TEACHER:false,PROFESSIONAL:false},
+      domainMatrix:{teman:{[sessionId]:'explored'}},openQuestions:[],analysis:{version:1,generated_at:'2026-09-28T10:00:00Z',result},
+      analysisStale:false,caseSummary:{strengths:result.strengths,patterns:result.patterns,hypotheses:[finding],changes:result.changes,
+        missing:result.missing_information,nextAction:result.recommended_follow_up},
+      plans:[],report:{version:1,status:'draft',professional_notes:'',content:{...result,verification_status:'AI_PRELIMINARY'}},
+      reviewers:[reviewer],hypothesisHistory:[],safetyHistory:[] } : null;
+    response.writeHead(responseBody ? 200 : 404, { 'content-type':'application/json','cache-control':'no-store' });
+    response.end(JSON.stringify(responseBody || {error:'Not found'})); return;
+  }
   if (url.pathname === '/api/dr-paws/assessment') {
     const subjectId = '00000000-0000-4000-8000-000000000001';
     const sessionId = '00000000-0000-4000-8000-000000000002';
@@ -133,7 +165,8 @@ createServer(async (request, response) => {
     response.end(html.replace(/<script type="module" src="\/app\.js\?v=\d+"><\/script>/, '').replace('</body>', mock + '</body>'));
     return;
   }
-  const name = url.pathname === '/dr-paws/dashboard' ? 'dashboard.html' :
+  const name = /^\/dr-paws\/dashboard\/subjects\/[^/]+$/.test(url.pathname) ? 'case.html' :
+    url.pathname === '/dr-paws/dashboard' ? 'dashboard.html' :
     ['/', '/naia', '/naya', '/dr-paws'].includes(url.pathname) ? 'index.html' : url.pathname.slice(1);
   if (!/^(?:[a-zA-Z0-9._/-]+)$/.test(name) || name.includes('..')) { response.writeHead(400); response.end(); return; }
   try {

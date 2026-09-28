@@ -10,7 +10,7 @@ import { createVercelHandler } from '../api/handler.js';
 import { sessionToken } from '../app/backend/access-auth.mjs';
 
 const owner = 'naya_primary_user';
-const childA = randomUUID(), childB = randomUUID(), templateId = randomUUID(), conversationId = randomUUID();
+const childA = randomUUID(), childB = randomUUID(), templateId = randomUUID(), conversationId = randomUUID(), reviewerId = randomUUID();
 const template = { id: templateId, owner_user_id: null, built_in: true, active: true, version: 1,
   name: 'Sekolah & Belajar', purpose: 'Mendengarkan pengalaman sekolah.', domains: [{ domain: 'sekolah', goal: 'Tanyakan kegiatan yang disukai.' }] };
 const subjects = { requireSubject: async (id) => {
@@ -21,7 +21,8 @@ const subjects = { requireSubject: async (id) => {
 function fakeStore() {
   const tables = {
     assessment_templates: [template], assessment_consents: [], assessment_sessions: [], assessment_analyses: [],
-    assessment_reports: [], assessment_report_revisions: [],
+    assessment_reports: [], assessment_report_revisions: [], case_audit: [],
+    reviewers: [{ id: reviewerId, owner_user_id: owner, display_name: 'Wali Bimo', professional_role: 'Orang tua' }],
     conversation_sessions: [{ id: conversationId, user_id: owner, mode: 'dr_paws', subject_id: childA,
       tavus_conversation_id: 'c-test', ended_at: new Date().toISOString(), transcript_status: 'ready', memory_status: 'error' }],
     conversation_messages: [{ id: randomUUID(), session_id: conversationId, position: 1, role: 'user', content: 'Aku suka belajar menggambar.', spoken_at: null, seconds_from_start: 4 },
@@ -146,19 +147,19 @@ test('persetujuan per anak diwajibkan sebelum sesi; retry memproses transkrip la
   const detail = await service.detail(started.id);
   assert.equal(detail.transcript[0].content, 'Aku suka belajar menggambar.');
   assert.match(detail.report.content.disclaimer, /bukan diagnosis/);
-  await assert.rejects(service.saveReport(started.id, { version: 1, status: 'final', content: {}, professionalNotes: '' }),
+  await assert.rejects(service.saveReport(started.id, { reviewerId, version: 1, status: 'final', content: {}, professionalNotes: '' }),
     (error) => error.code === 'REVIEW_REQUIRED');
-  const reviewed = await service.saveReport(started.id, { version: 1, status: 'reviewed', content: {}, professionalNotes: 'Ditinjau wali.' });
+  const reviewed = await service.saveReport(started.id, { reviewerId, version: 1, status: 'reviewed', content: {}, professionalNotes: 'Ditinjau wali.' });
   assert.equal(reviewed.status, 'reviewed');
   assert.equal(store.tables.assessment_report_revisions.length, 1);
-  await assert.rejects(service.saveReport(started.id, { version: 1, status: 'final', content: {}, professionalNotes: '' }),
+  await assert.rejects(service.saveReport(started.id, { reviewerId, version: 1, status: 'final', content: {}, professionalNotes: '' }),
     (error) => error.code === 'REPORT_CONFLICT');
   const pdf = await renderAssessmentPdf(await service.detail(started.id));
   assert.equal(pdf.subarray(0, 4).toString(), '%PDF');
   assert.ok(pdf.length > 1000);
-  const final = await service.saveReport(started.id, { version: 2, status: 'final', content: {}, professionalNotes: 'Ditinjau wali.' });
+  const final = await service.saveReport(started.id, { reviewerId, version: 2, status: 'final', content: {}, professionalNotes: 'Ditinjau wali.' });
   assert.equal(final.status, 'final');
-  const edited = await service.saveReport(started.id, { version: 3, status: 'final', content: { summary: 'Ringkasan dikoreksi.' }, professionalNotes: 'Ditinjau wali.' });
+  const edited = await service.saveReport(started.id, { reviewerId, version: 3, status: 'final', content: { summary: 'Ringkasan dikoreksi.' }, professionalNotes: 'Ditinjau wali.' });
   assert.equal(edited.status, 'draft');
   assert.equal(store.tables.assessment_report_revisions.length, 3);
 });
@@ -188,34 +189,34 @@ test('reviewer dapat menerima, merevisi, menolak, dan menandai bukti kurang tanp
   const original = detail.report.content.working_hypotheses[0];
   const withDecision = (decision, extra = {}) => ({ ...original,
     professional_review: { decision, note: 'Ditelaah reviewer.', revised_label: '', revised_rationale: '', ...extra } });
-  await assert.rejects(service.saveReport(started.id, { version: 1, status: 'reviewed', content: {
+  await assert.rejects(service.saveReport(started.id, { reviewerId, version: 1, status: 'reviewed', content: {
     verification_status: 'PROFESSIONAL_CONFIRMED', working_hypotheses: [{ ...original, supporting_evidence: [] }] }, professionalNotes: '' }),
   (error) => error.code === 'EVIDENCE_INVALID');
-  const accepted = await service.saveReport(started.id, { version: 1, status: 'reviewed',
+  const accepted = await service.saveReport(started.id, { reviewerId, version: 1, status: 'reviewed',
     content: { verification_status: 'PROFESSIONAL_CONFIRMED', working_hypotheses: [withDecision('accept_for_assessment')] },
     professionalNotes: '' });
   assert.equal(accepted.content.verification_status, 'PROFESSIONAL_REVIEWED');
   assert.match(verificationBanner(await service.detail(started.id)), /Telah Ditinjau Profesional/);
-  const revised = await service.saveReport(started.id, { version: 2, status: 'reviewed', content: {
+  const revised = await service.saveReport(started.id, { reviewerId, version: 2, status: 'reviewed', content: {
     working_hypotheses: [withDecision('revise', { revised_label: 'Pola belajar yang perlu ditelaah',
       revised_rationale: 'Perlu data tambahan dari rumah dan sekolah.' })] }, professionalNotes: '' });
   assert.equal(revised.content.verification_status, 'PROFESSIONAL_REVISED');
-  const rejected = await service.saveReport(started.id, { version: 3, status: 'reviewed',
+  const rejected = await service.saveReport(started.id, { reviewerId, version: 3, status: 'reviewed',
     content: { working_hypotheses: [withDecision('reject')] }, professionalNotes: '' });
   assert.equal(rejected.content.working_hypotheses[0].professional_review.decision, 'reject');
-  const insufficient = await service.saveReport(started.id, { version: 4, status: 'reviewed',
+  const insufficient = await service.saveReport(started.id, { reviewerId, version: 4, status: 'reviewed',
     content: { working_hypotheses: [withDecision('insufficient_evidence')] }, professionalNotes: '' });
   assert.equal(insufficient.content.working_hypotheses[0].professional_review.decision, 'insufficient_evidence');
-  await assert.rejects(service.saveReport(started.id, { version: 5, status: 'reviewed', confirmProfessional: true,
+  await assert.rejects(service.saveReport(started.id, { reviewerId, version: 5, status: 'reviewed', confirmProfessional: true,
     content: {}, professionalNotes: '' }), (error) => error.code === 'REVIEW_REQUIRED');
-  const final = await service.saveReport(started.id, { version: 5, status: 'final', confirmProfessional: true,
+  const final = await service.saveReport(started.id, { reviewerId, version: 5, status: 'final', confirmProfessional: true,
     content: {}, professionalNotes: '' });
   assert.equal(final.content.verification_status, 'PROFESSIONAL_CONFIRMED');
   assert.equal(final.content.working_hypotheses[0].professional_review.decision, 'insufficient_evidence');
   detail = await service.detail(started.id);
   assert.match(verificationBanner(detail), /Dikonfirmasi/);
   assert.equal((await renderAssessmentPdf(detail)).subarray(0, 4).toString(), '%PDF');
-  const reopened = await service.saveReport(started.id, { version: 6, status: 'final',
+  const reopened = await service.saveReport(started.id, { reviewerId, version: 6, status: 'final',
     content: { conclusion: 'Kesimpulan dikoreksi oleh profesional.' }, professionalNotes: '' });
   assert.equal(reopened.status, 'draft');
   assert.equal(reopened.content.verification_status, 'AI_PRELIMINARY');

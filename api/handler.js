@@ -10,6 +10,9 @@ import { inspectTavusProfile } from '../app/backend/tavus-profile-inspect.mjs';
 import { makeAssessmentService, AssessmentError, buildInterviewContext } from '../app/backend/assessments.mjs';
 import { analyzeAssessment } from '../app/backend/assessment-analysis.mjs';
 import { dispatchAssessmentRequest } from '../app/backend/assessment-route.mjs';
+import { makeCaseService, CaseError } from '../app/backend/longitudinal.mjs';
+import { analyzeLongitudinal } from '../app/backend/longitudinal-analysis.mjs';
+import { dispatchCaseRequest } from '../app/backend/longitudinal-route.mjs';
 
 export const config = { maxDuration: 60 };
 
@@ -69,10 +72,15 @@ export function createVercelHandler({ env = process.env, client, memory, store: 
   const assessments = makeAssessmentService({ store, subjects, analysisModel: env.GEMINI_MEMORY_MODEL || 'gemini-2.5-flash',
     analyze: (messages, template) => analyzeAssessment(messages, template,
       { apiKey: env.GEMINI_API_KEY, model: env.GEMINI_MEMORY_MODEL || 'gemini-2.5-flash' }) });
+  const cases = makeCaseService({ store, subjects, analysisModel: env.GEMINI_MEMORY_MODEL || 'gemini-2.5-flash',
+    analyze: (entries) => analyzeLongitudinal(entries,
+      { apiKey: env.GEMINI_API_KEY, model: env.GEMINI_MEMORY_MODEL || 'gemini-2.5-flash' }) });
 
   return async function handler(request, response) {
     const url = new URL(request.url, 'https://mynaia.local');
     const route = url.searchParams.get('route');
+    const observed = route === 'assessment' || route === 'case';
+    const began = Date.now(); let failureCategory = null;
     try {
       if (request.method === 'GET' && route === 'health') {
         json(response, 200, { status: 'ok', milestone: 5 });
@@ -89,6 +97,20 @@ export function createVercelHandler({ env = process.env, client, memory, store: 
           service: assessments, drMemory });
         if (result.pdf) {
           response.writeHead(200, { 'content-type': 'application/pdf', 'content-disposition': 'attachment; filename="dr-paws-laporan.pdf"',
+            'cache-control': 'private, no-store', 'x-content-type-options': 'nosniff' });
+          response.end(result.pdf);
+        } else json(response, result.status || 200, result.body);
+        return;
+      }
+      if (route === 'case') {
+        if (!accessCode) throw new CaseError('PROFESSIONAL_ACCESS_UNAVAILABLE', 'Akses profesional belum dikonfigurasi.', 503);
+        if (request.method === 'POST' && !sameOrigin(request)) throw new CaseError('INVALID_ORIGIN', 'Asal permintaan tidak valid.', 403);
+        const result = await dispatchCaseRequest({ method: request.method, action: url.searchParams.get('action'),
+          id: url.searchParams.get('id'), ref: url.searchParams.get('ref'),
+          body: request.method === 'POST' ? await readJson(request, 40000) : {}, service: cases });
+        if (result.pdf) {
+          response.writeHead(200, { 'content-type': 'application/pdf',
+            'content-disposition': 'attachment; filename="dr-paws-longitudinal.pdf"',
             'cache-control': 'private, no-store', 'x-content-type-options': 'nosniff' });
           response.end(result.pdf);
         } else json(response, result.status || 200, result.body);
@@ -191,7 +213,7 @@ export function createVercelHandler({ env = process.env, client, memory, store: 
           const subjectId = mode === 'dr_paws' ? body.subjectId : undefined;
           const assessment = mode === 'dr_paws' && body.assessmentTemplateId ?
             await assessments.prepare({ subjectId, templateId: body.assessmentTemplateId, professionalNote: body.professionalNote,
-              includeProfessionalNote: body.includeProfessionalNote }) : null;
+              includeProfessionalNote: body.includeProfessionalNote, followUpGoals: body.followUpGoals }) : null;
           const memoryContext = await selectedMemory.prepareContext({ subjectId });
           const context = assessment ? buildInterviewContext(memoryContext, assessment.template, assessment.includeNote ? assessment.note : '') : memoryContext;
           const session = await selectedTavus.createConversation({ conversationalContext: context, durationMinutes: durationSeconds / 60 });
@@ -242,12 +264,20 @@ export function createVercelHandler({ env = process.env, client, memory, store: 
       }
       json(response, 404, { error: 'Tidak ditemukan.' });
     } catch (error) {
-      if (error instanceof TavusError || error instanceof SubjectError || error instanceof AssessmentError) json(response, error.status, { error: error.message, code: error.code });
+      failureCategory = error instanceof StorageError ? 'SUPABASE' :
+        /^GEMINI|ANALYSIS/.test(error?.code || error?.message || '') ? 'GEMINI' :
+        error instanceof CaseError || error instanceof AssessmentError ? 'CASE_VALIDATION' : 'SERVER';
+      if (error instanceof TavusError || error instanceof SubjectError || error instanceof AssessmentError || error instanceof CaseError) json(response, error.status, { error: error.message, code: error.code });
       else if (error instanceof StorageError) json(response, 503, { error: 'Penyimpanan memori belum tersedia.', code: error.code });
       else {
         console.error('Vercel API error:', error?.name || 'UnknownError');
         json(response, 500, { error: 'Terjadi kesalahan pada server.' });
       }
+    } finally {
+      if (observed) console.info(JSON.stringify({ event: 'dr_paws_api', route,
+        action: /^[a-z-]{1,32}$/.test(url.searchParams.get('action') || '') ? url.searchParams.get('action') : 'unknown',
+        at: new Date().toISOString(), status: response.statusCode, duration_ms: Date.now() - began,
+        failure_category: failureCategory }));
     }
   };
 }

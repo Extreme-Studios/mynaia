@@ -116,7 +116,8 @@ const api = {
     const body = { mode, subjectId: mode === 'dr_paws' ? subjectId : undefined, durationMinutes: Number($('#duration').value) };
     if (mode === 'dr_paws' && assessmentSetup) Object.assign(body, {
       assessmentTemplateId: assessmentSetup.templateId, professionalNote: assessmentSetup.professionalNote,
-      includeProfessionalNote: assessmentSetup.includeProfessionalNote === true });
+      includeProfessionalNote: assessmentSetup.includeProfessionalNote === true,
+      followUpGoals: assessmentSetup.followUpGoals || [] });
     const result = await apiRequest('/api/conversations', { method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body) });
     if (assessmentSetup) { sessionStorage.removeItem('mynaia.drPawsAssessmentSetup'); assessmentSetup = null; }

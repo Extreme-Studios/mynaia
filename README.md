@@ -1,10 +1,16 @@
 # Naia Virtual Girl
 
+## Dr. Paws — kasus longitudinal (Milestone 8)
+
+Setelah login MyNaiA, buka `/dr-paws/dashboard`, pilih atau buat profil reviewer, lalu buka kasus dari kartu profil anak. Halaman `/dr-paws/dashboard/subjects/:subjectId` menampilkan timeline sesi, formulir orang tua/guru/profesional, pola lintas sesi, bukti asli, keputusan reviewer, rencana follow-up, laporan versi, dan PDF setelah review. **Buat Sesi Follow-up** hanya menyiapkan tujuan; tidak membuat conversation Tavus. Terapkan `supabase/migrations/008_dr_paws_longitudinal.sql` sesudah 007 sebelum memakai fitur ini. Detail privasi, batas klinis, dan langkah validasi manusia ada di [docs/milestone-8.md](docs/milestone-8.md).
+
+**Current Milestone: 8 – implementation ready; human longitudinal validation required.**
+
 ## Dr. Paws — ruang profesional (Milestone 7)
 
 Buka `/dr-paws/dashboard` dengan password akses MyNaiA yang sama. Dashboard menyediakan tujuh template wawancara percakapan asli, template khusus, persetujuan orang dewasa per profil anak, sesi terstruktur, transkrip, analisis dengan rujukan giliran, review laporan, revisi, dan unduhan PDF privat setelah laporan ditinjau. Free chat Dr. Paws dan Naia tetap tersedia. Jalankan migrasi `supabase/migrations/005_dr_paws_assessment.sql`, `006_dr_paws_assessment_deletion.sql`, dan `007_dr_paws_analysis_model.sql` berurutan sebelum deploy ke lingkungan baru. Pada Supabase production `mynaia`, ketiganya sudah diterapkan dan tujuh template bawaan diverifikasi. Implementasi belum diuji dengan wawancara Tavus nyata; lihat [docs/milestone-7.md](docs/milestone-7.md).
 
-**Current Milestone: 7 – implementation ready; human structured interview validation required.**
+Milestone 7 masih memerlukan human structured interview validation.
 
 Home and precall now use muted Google Flow talking loops for Naia and Dr. Paws. Original media is stored in [MyNaiA Hero Assets on Drive](https://drive.google.com/drive/u/0/folders/1mGxz9JxRLlpDT_YMkFkWtg6Q9zvwqj8z); the [hero_assets catalog](https://docs.google.com/spreadsheets/d/1l0wdyL3W3l9a5J3eMfyKtdQ9x-FzXaFu9lTkcmPZ2v0/edit?gid=0#gid=0) tracks master links. Browser restrictions prevent reliable direct Drive video embedding, so the site delivers ~656 KB of optimized poster/video copies from Vercel. No Tavus minutes were used for these decorative clips. See `docs/milestone-6.md` and `docs/flow/README.md`.
 

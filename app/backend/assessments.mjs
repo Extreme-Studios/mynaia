@@ -105,12 +105,20 @@ export function makeAssessmentService({ store, subjects = makeSubjectService({ s
       consent_actor: name, consent_timestamp: now() }, 'owner_user_id,subject_id,consent_version');
     return consentStatus(subjectId);
   }
-  async function prepare({ subjectId, templateId, professionalNote = '', includeProfessionalNote = false } = {}) {
+  async function prepare({ subjectId, templateId, professionalNote = '', includeProfessionalNote = false,
+    followUpGoals = [] } = {}) {
     await subjects.requireSubject(subjectId);
     const template = await requireTemplate(templateId);
     if (!(await consentStatus(subjectId)).consented) throw new AssessmentError('CONSENT_REQUIRED', 'Persetujuan orang tua/wali belum dicatat.', 409);
     if (typeof professionalNote !== 'string' || professionalNote.length > 2000) throw new AssessmentError('NOTE_INVALID', 'Catatan profesional terlalu panjang.');
-    return { template, note: clean(professionalNote), includeNote: includeProfessionalNote === true };
+    if (!Array.isArray(followUpGoals) || followUpGoals.length > 6) throw new AssessmentError('GOALS_INVALID', 'Tujuan follow-up tidak valid.');
+    const goals = followUpGoals.map((goal) => clean(goal, 180)).filter(Boolean);
+    if (goals.some((goal) => /\b(diagnos\w*|adhd|autis\w*|depresi|bipolar|gangguan mental|hipotesis klinis)\b/i.test(goal)))
+      throw new AssessmentError('GOALS_INVALID', 'Gunakan tujuan percakapan yang aman untuk anak.');
+    const selected = goals.length ? { ...template, name: `${template.name} - Follow-up`,
+      domains: [...template.domains.slice(0, Math.max(0, 8 - goals.length)),
+        ...goals.map((goal, index) => ({ domain: `follow_up_${index + 1}`, goal }))] } : template;
+    return { template: selected, note: clean(professionalNote), includeNote: includeProfessionalNote === true };
   }
   async function recordStarted(conversationId, { subjectId, template, note, durationMinutes } = {}) {
     const rows = await store.select('conversation_sessions', { user_id: eq(userId), mode: 'eq.dr_paws',
@@ -217,8 +225,8 @@ export function makeAssessmentService({ store, subjects = makeSubjectService({ s
       transcript_status: conversation[0].transcript_status, memory_status: conversation[0].memory_status },
     transcript, analysis: analysis[0] || null, report: report[0] || null, revisions };
   }
-  async function saveReport(id, { content, professionalNotes, status, version, confirmProfessional = false } = {}) {
-    await requireSession(id);
+  async function saveReport(id, { content, professionalNotes, status, version, reviewerId, confirmProfessional = false } = {}) {
+    const session = await requireSession(id);
     const previous = (await store.select('assessment_reports', scoped({ session_id: eq(id) }), '*'))[0];
     if (!previous) throw new AssessmentError('REPORT_NOT_READY', 'Laporan belum tersedia.', 409);
     if (Number(version) !== previous.version) throw new AssessmentError('REPORT_CONFLICT', 'Laporan berubah. Muat ulang sebelum menyimpan.', 409);
@@ -227,6 +235,9 @@ export function makeAssessmentService({ store, subjects = makeSubjectService({ s
     if (typeof professionalNotes !== 'string' || professionalNotes.length > 8000) throw new AssessmentError('REPORT_INVALID', 'Catatan terlalu panjang.');
     if (!content || typeof content !== 'object' || Array.isArray(content) || JSON.stringify(content).length > 30000)
       throw new AssessmentError('REPORT_INVALID', 'Isi laporan tidak valid.');
+    if (!UUID.test(String(reviewerId || ''))) throw new AssessmentError('REVIEWER_REQUIRED', 'Pilih profil reviewer.', 409);
+    const reviewer = (await store.select('reviewers', scoped({ id: eq(reviewerId) }), 'id,display_name,professional_role'))[0];
+    if (!reviewer) throw new AssessmentError('REVIEWER_REQUIRED', 'Profil reviewer tidak ditemukan.', 409);
     // Only editable prose is accepted. Evidence and identity remain generated from the verified analysis.
     const editable = ['summary','purpose','conclusion','insufficient','follow_up'];
     const next = { ...previous.content };
@@ -289,6 +300,12 @@ export function makeAssessmentService({ store, subjects = makeSubjectService({ s
       finalized_at: nextStatus === 'final' ? now() : null, updated_at: now() };
     await store.update('assessment_reports', scoped({ session_id: eq(id), version: eq(previous.version) }), updated);
     await store.update('assessment_sessions', scoped({ id: eq(id) }), { status: nextStatus, updated_at: now() });
+    await store.upsert('case_audit', { id: randomUUID(), owner_user_id: userId, subject_id: session.subject_id,
+      reviewer_id: reviewer.id, action: `SESSION_REPORT_${nextStatus.toUpperCase()}`, entity_type: 'session_report', entity_id: id,
+      previous_state: { version: previous.version, status: previous.status,
+        hypothesis_decisions: (previous.content.working_hypotheses || []).map((item) => item.professional_review?.decision || 'pending') },
+      new_state: { version: updated.version, status: updated.status,
+        hypothesis_decisions: (next.working_hypotheses || []).map((item) => item.professional_review?.decision || 'pending') } }, 'id');
     return { ...previous, ...updated };
   }
   async function deleteSession(id, confirmation) {

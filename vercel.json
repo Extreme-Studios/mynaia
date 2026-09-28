@@ -10,6 +10,7 @@
     { "source": "/api/dr-paws/subjects", "destination": "/api/handler?route=subjects" },
     { "source": "/api/dr-paws/subjects/:id/reset", "destination": "/api/handler?route=subject-reset&id=:id" },
     { "source": "/api/dr-paws/assessment", "destination": "/api/handler?route=assessment" },
+    { "source": "/api/dr-paws/case", "destination": "/api/handler?route=case" },
     { "source": "/api/modes/status", "destination": "/api/handler?route=mode-status" },
     { "source": "/api/admin/tavus-profiles", "destination": "/api/handler?route=admin-profiles" },
     { "source": "/api/admin/tavus-profile", "destination": "/api/handler?route=admin-profile" },
@@ -23,6 +24,7 @@
     { "source": "/naia", "destination": "/index.html" },
     { "source": "/naya", "destination": "/index.html" },
     { "source": "/dr-paws", "destination": "/index.html" },
-    { "source": "/dr-paws/dashboard", "destination": "/dashboard.html" }
+    { "source": "/dr-paws/dashboard", "destination": "/dashboard.html" },
+    { "source": "/dr-paws/dashboard/subjects/:id", "destination": "/case.html" }
   ]
 }

@@ -9,5 +9,6 @@
 | 5 — Product UI / PWA / Multi-Mode | Home MyNaiA, Naia dan Dr. Paws, mode memori terpisah, durasi, fullscreen, PWA, dan kontrol panggilan. | Implementasi siap; validasi UI/live manusia diperlukan. |
 | 6 — Cinematic Product UI / Sales-Ready Experience | Splash singkat, landing premium, mode dan call UI lebih rapi, motion GSAP, responsive mock QA. | Implementasi siap; validasi visual manusia diperlukan. |
 | 7 — Dr. Paws Assessment & Professional Review | Dashboard profesional, template wawancara percakapan, consent, analisis berbukti, review laporan, dan PDF privat. | Implementasi siap; wawancara terstruktur dan review manusia diperlukan. |
+| 8 — Dr. Paws Longitudinal Assessment & Multi-Source Review | Kasus per anak, timeline, sumber orang tua/guru/profesional, analisis lintas sesi, reviewer, audit, planner, dan PDF longitudinal. | Implementasi siap; validasi longitudinal manusia diperlukan. |
 
 Uji keselamatan, aksesibilitas pada perangkat nyata, retensi data, biaya, dan pilot terbatas tetap pekerjaan terpisah. Milestone 7 bukan tes diagnostik/klinis dan belum memiliki login multi-user.
