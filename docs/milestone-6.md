@@ -33,3 +33,11 @@ QA must cover first open, home, both precall modes, mocked call, fullscreen and 
 - Production first-load inspection caught stale service-worker modules producing GSAP selector warnings. App module imports now include the release version, so the old cache cannot satisfy new dependencies.
 - Final local gates: `npm run check` passed, `npm test` passed 52/52, `npm run build` passed, and `git diff --check` found no whitespace errors.
 - All conversation tests use mocks. No live Tavus conversation, PAL creation, or conversation minutes were used.
+
+## Production deployment verification
+
+- Implementation commit: `6eb1fde` (cinematic rebuild starts at `ee461c2`). Pushed to `Extreme-Studios/mynaia` main.
+- Existing Vercel project `mynaia`, production deployment `dpl_Hy9nHk2GoeECVbwTZLvSGYFE2hs8`, reported READY. Deployment URL: https://mynaia-9i2eexrvs-extreme-studios-projects.vercel.app
+- Custom domain https://mynaia.extremestudiosai.com/ was inspected after deployment. Entry version `app.js?v=17`, renderer WebGPU, one canvas. Home and `/naia` precall displayed correctly. No errors/warnings appeared in console entries captured after the final reload and route navigation.
+- Production screenshots: `visual-qa/production-desktop.jpg` (1366x768), `production-mobile.jpg` (390x844), and `production-naia-precall.jpg` (1366x768).
+- No Start action, microphone/camera permission, live conversation, or Tavus minute usage. Human visual approval remains required; no Milestone 6 PASSED claim.
