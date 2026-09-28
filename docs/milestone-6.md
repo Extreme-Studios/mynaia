@@ -1,5 +1,15 @@
 > Previous orb-based presentation was rejected. The current character-first patch below supersedes its visual design; prior evidence remains a historical record.
 
+## Flow talking hero release — 2026-09-28
+
+Naia and Dr. Paws now have separate 8-second speaking video loops generated from new Google Flow portrait references. Two Veo 3.1 Lite video generations were run once each at 10 Flow credits per clip (20 total); two Nano Banana 2 reference images used 0 credits. No Tavus conversation, new PAL, or live session was used. The loops are decorative and muted in Home/precall; they do not represent the live Tavus avatar, and lip sync/audio quality was not verified.
+
+Original JPG and MP4 masters are in the [MyNaiA Hero Assets Drive folder](https://drive.google.com/drive/u/0/folders/1mGxz9JxRLlpDT_YMkFkWtg6Q9zvwqj8z). The [My Naia sheet](https://docs.google.com/spreadsheets/d/1l0wdyL3W3l9a5J3eMfyKtdQ9x-FzXaFu9lTkcmPZ2v0/edit?gid=0#gid=0) has a published `hero_assets` CSV tab with the corresponding master URLs, enabled flags, version, and labels; the rest of the document remains private. The web app reads only that small catalog. Browser media loading from direct Drive download links failed due cross-origin restrictions despite HTTP range downloads succeeding, so the site ships compact local derivatives. No media byte proxy or Supabase Storage was added.
+
+Web derivatives are 720px JPG posters (~70 KB each) and silent 480×854, 15 fps H.264 MP4 loops (~236–280 KB each). Together they are ~656 KB, below the previous two PNG posters (~4.1 MB). Masters remain in Drive and local ignored `docs/flow/generated/`. `scripts/build-web.mjs` copies only the four compact derivatives into Vercel output. The service worker caches the small posters and leaves videos uncached. Release/cache 21 replaces release 20.
+
+Local browser validation showed both hero videos `readyState=4`, `paused=false`, and `currentTime` progressing; a saved screenshot is in `docs/visual-qa/flow-video/local-home.jpg`. No automatic replay after a media error. Reduced motion, hidden page, and active Tavus call pause decorative loops. Human visual review of both clips and mobile/device playback remains required. Earlier sections of this document describe the previous release and are retained as history.
+
 # Milestone 6 — Cinematic 3D rebuild
 
 Status: implementation ready for human visual approval. No live Tavus conversation was created during this rebuild.

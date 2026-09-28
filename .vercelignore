@@ -9,3 +9,6 @@ app/backend/.naya-fast-llm-backup-*.json
 node_modules/
 .vercel/
 public/
+docs/
+tests/
+app/frontend/assets/hero/*-hero-poster.png

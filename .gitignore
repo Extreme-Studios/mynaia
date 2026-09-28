@@ -14,3 +14,4 @@ app/backend/.naya-gemini-pal.json.*.tmp
 app/backend/.naya-fast-llm-backup-*.json
 .vercel/
 public/
+docs/flow/generated/

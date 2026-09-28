@@ -1,4 +1,4 @@
-import { mkdir, copyFile, readdir, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, copyFile, readdir, unlink, writeFile, readFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
@@ -24,9 +24,10 @@ console.log('Frontend siap untuk Vercel.');
 
 const heroSource=join(source,'assets','hero'), heroDestination=join(destination,'assets','hero');
 await mkdir(heroDestination,{recursive:true});
-const heroNames=await readdir(heroSource);
 const allowed=/^(?:naia|dr-paws)-hero-(?:poster\.png|loop\.(?:mp4|webm))$/;
-for(const name of await readdir(heroDestination)) if(allowed.test(name) && !heroNames.includes(name)) await unlink(join(heroDestination,name));
-for(const name of heroNames) if(allowed.test(name)) await copyFile(join(heroSource,name),join(heroDestination,name));
-const manifest=Object.fromEntries(['naia','dr-paws'].map(key=>[key,{poster:`${key}-hero-poster.png`,videos:['webm','mp4'].map(ext=>`${key}-hero-loop.${ext}`).filter(name=>heroNames.includes(name))}]));
+// Drive holds the originals. Deploy only compact, silent web derivatives.
+for(const name of await readdir(heroDestination)) if(allowed.test(name) || /^(naia|dr-paws)-hero-poster\.jpg$/.test(name)) await unlink(join(heroDestination,name));
+for(const key of ['naia','dr-paws']) for(const suffix of ['hero-poster.jpg','hero-loop.mp4'])
+  await copyFile(join(heroSource,`${key}-${suffix}`),join(heroDestination,`${key}-${suffix}`));
+const manifest=JSON.parse(await readFile(join(heroSource,'catalog.json'),'utf8'));
 await writeFile(join(heroDestination,'manifest.json'),JSON.stringify(manifest));

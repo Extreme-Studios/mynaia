@@ -5,7 +5,7 @@ import { join, resolve, extname } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
 const publicDir = join(root, 'public');
-const mime = { '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.json': 'application/json', '.mp4': 'video/mp4', '.webm': 'video/webm', '.webmanifest': 'application/manifest+json' };
+const mime = { '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg', '.json': 'application/json', '.mp4': 'video/mp4', '.webm': 'video/webm', '.webmanifest': 'application/manifest+json' };
 
 createServer(async (request, response) => {
   const url = new URL(request.url, 'http://localhost');

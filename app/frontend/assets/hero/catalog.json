@@ -1,0 +1,15 @@
+{
+  "catalogUrl": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRLp47ZwyRc7rQoQ82IzGNRHq_lTa_CPrHkhH0ngZ82wmh1kzfTt-11Seocf2878L2S2IixJbKThNf5/pub?gid=0&single=true&output=csv",
+  "naia": {
+    "poster": "naia-hero-poster.jpg",
+    "videos": ["naia-hero-loop.mp4"],
+    "masterPoster": "https://drive.usercontent.google.com/download?id=1iiNQT4Z1Nl7MC2dKB-sms5rCWY4VVINd&export=download",
+    "masterVideo": "https://drive.usercontent.google.com/download?id=18UnokBbuFBBv8qqHT54at-3cQqHITIls&export=download"
+  },
+  "dr-paws": {
+    "poster": "dr-paws-hero-poster.jpg",
+    "videos": ["dr-paws-hero-loop.mp4"],
+    "masterPoster": "https://drive.usercontent.google.com/download?id=1pxQ_1qgu36OgHELEpmQUWd1eVfWZ6n4U&export=download",
+    "masterVideo": "https://drive.usercontent.google.com/download?id=1zUpNf2SQqueHIo9cdx6A_pclErDYx_nm&export=download"
+  }
+}

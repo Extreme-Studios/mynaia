@@ -249,9 +249,9 @@ export function createNayaServer({ client: injectedClient, gemini = geminiConfig
         response.end(body);
         return;
       }
-      if (request.method === 'GET' && /^\/assets\/hero\/(?:manifest\.json|(?:naia|dr-paws)-hero-(?:poster\.png|loop\.(?:mp4|webm)))$/.test(path)) {
+      if (request.method === 'GET' && /^\/assets\/hero\/(?:manifest\.json|(?:naia|dr-paws)-hero-(?:poster\.jpg|loop\.mp4))$/.test(path)) {
         const body=await readFile(join(root,'public',path.slice(1)));
-        const type=path.endsWith('.png')?'image/png':path.endsWith('.webm')?'video/webm':path.endsWith('.mp4')?'video/mp4':'application/json';
+        const type=path.endsWith('.jpg')?'image/jpeg':path.endsWith('.mp4')?'video/mp4':'application/json';
         response.writeHead(200, {'content-type':type,'cache-control':'no-cache','x-content-type-options':'nosniff'});response.end(body);return;
       }
       if (request.method === 'GET' && /^\/cinematic(?:-[A-Z0-9]+)?\.js$/.test(path)) {
