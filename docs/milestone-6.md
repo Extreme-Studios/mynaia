@@ -18,17 +18,18 @@ Precall pages keep a focused version of the same scene behind the character invi
 
 ## PWA and validation
 
-Static cache v15 includes the bundled Three.js entry, GSAP, and app shell. Navigation is network-first; `/api/` bypasses the service worker, and Daily video code is loaded only on Start. A controller update reloads the page only when no call is active.
+Static cache v16 includes the bundled Three.js entry, GSAP, and app shell. Navigation is network-first; `/api/` bypasses the service worker, and Daily video code is loaded only on Start. A controller update reloads the page only when no call is active.
 
 QA must cover first open, home, both precall modes, mocked call, fullscreen and end states at desktop and mobile dimensions. Mock screens never call Tavus. Automated checks verify the scene architecture, adaptive quality, fallbacks, frontend contracts, and backend mocks. Human approval is still required for visual judgment and real device/call behavior.
 
 ## Verification record â€” 2026-09-28
 
 - Three.js 0.181.2 and GSAP 3.15.0; esbuild bundles the procedural scene and separates the WebGPU module.
-- Saved and inspected screenshots in `docs/visual-qa/`: first-open 1366×768, home, both precall modes, mock call, fullscreen mock, and end states at 1366×768 and 390×844. The first-open image captures the early energy field, not the entire timed animation. The renderer reported WebGPU with one canvas. Desktop self-view stayed to the right; mobile self-view stayed a small floating panel; fullscreen exit remained visible.
-- Width checks at 360, 390, 430, 768, 1024, 1366, and 1440 found no horizontal overflow. Portrait tablet inspection caught clipped worlds; final world spacing and scale now account for viewport aspect ratio. Dr. Paws desktop controls fit within 1366×768 after shortening the precall stage. Screenshots use JPEG, with actual dimensions checked from the files.
+- Saved and inspected screenshots in `docs/visual-qa/`: first-open 1366Ã—768, home, both precall modes, mock call, fullscreen mock, and end states at 1366Ã—768 and 390Ã—844. The first-open image captures the early energy field, not the entire timed animation. The renderer reported WebGPU with one canvas. Desktop self-view stayed to the right; mobile self-view stayed a small floating panel; fullscreen exit remained visible.
+- Width checks at 360, 390, 430, 768, 1024, 1366, and 1440 found no horizontal overflow. Portrait tablet inspection caught clipped worlds; final world spacing and scale now account for viewport aspect ratio. Dr. Paws desktop controls fit within 1366Ã—768 after shortening the precall stage. Screenshots use JPEG, with actual dimensions checked from the files.
 - Forced WebGL and CSS mock runs were inspected. CSS uses zero canvases and keeps both HTML actions visible. Mock call pauses and hides the decorative renderer. Five repeated Home/character/Home navigations retained one canvas per document. This is a DOM lifecycle check, not a GPU heap stability measurement. Physical device performance, FPS, heat, and GPU memory were not measured.
 - QA caught an intro/renderer initialization race on repeat Home navigation; ready now respects the completed intro state. Camera transition no longer competes with pointer updates. Render errors/context loss return to the CSS presentation. Final local QA console returned zero errors/warnings. The isolated QA server has no Tavus connection and returns 404 for unsupported API routes.
 - The name shown in the UI, local persona files, context/extraction text, and docs is Naia. Preferred route is `/naia`; `/naya` remains a compatibility alias. Existing memory keys, environment variables, function identifiers, account credentials, and PAL IDs remain stable. Existing hosted Tavus PAL persona/greeting was not patched during this visual rebuild; it may still say Naya until separately updated.
+- Production first-load inspection caught stale service-worker modules producing GSAP selector warnings. App module imports now include the release version, so the old cache cannot satisfy new dependencies.
 - Final local gates: `npm run check` passed, `npm test` passed 52/52, `npm run build` passed, and `git diff --check` found no whitespace errors.
 - All conversation tests use mocks. No live Tavus conversation, PAL creation, or conversation minutes were used.
