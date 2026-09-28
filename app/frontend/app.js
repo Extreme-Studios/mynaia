@@ -159,6 +159,7 @@ function render(state) {
   $('#end').hidden = !active;
   $('#mic-help').hidden = !active;
   $('#self-view-toggle').hidden = !active;
+  $('#call-settings').hidden = !active;
   $('#duration').disabled = active || pending;
   $('#subject-select').disabled = active || pending;
   $('#subject-add-toggle').disabled = active || pending;
@@ -180,6 +181,7 @@ function render(state) {
   $('#room-layout').hidden = state.phase === 'ended';
   $('#call-view .controls').hidden = state.phase === 'ended';
   $('#mic-hint').hidden = state.phase === 'ended';
+  if (state.phase === 'ended' && !$('#settings-panel').hidden) setSettings(false);
   if (state.phase === 'ended') {
     $('#postcall-title').textContent = mode === 'naya' ? 'Percakapan selesai.' : 'Ceritanya selesai untuk sekarang.';
     $('#postcall-text').textContent = state.message?.includes('durasi') ? state.message :
@@ -350,6 +352,7 @@ function setSettings(open) {
   if (open) animateVisible($('#settings-panel'));
 }
 $('#settings-toggle').addEventListener('click', () => setSettings($('#settings-panel').hidden));
+$('#call-settings').addEventListener('click', () => setSettings($('#settings-panel').hidden));
 $('#settings-close').addEventListener('click', () => setSettings(false));
 $('#duration').addEventListener('change', () => { $('#duration-warning').hidden = $('#duration').value !== '20'; });
 $('#setting-duration').addEventListener('change', () => {

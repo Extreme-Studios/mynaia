@@ -24,6 +24,7 @@ test('landing dan kedua mode menampilkan produk tanpa konten teknis di permukaan
   assert.match(html, /id="postcall-title"/);
   assert.match(html, /id="exit-fullscreen"/);
   assert.match(html, /id="self-view-toggle"/);
+  assert.match(html, /id="call-settings"/);
   assert.match(html, /id="debug-panel" class="debug-panel" hidden/);
   assert.doesNotMatch(html, /PAL ID|conversation_id|SUPABASE_SERVICE_ROLE_KEY|GEMINI_API_KEY|TAVUS_API_KEY/);
 });
@@ -40,6 +41,7 @@ test('motion dan CSS menjaga preferensi aksesibilitas serta memprioritaskan call
   assert.match(css, /\.in-call \.call-heading/);
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
   assert.match(css, /\.subject-choice\[aria-pressed=true\]/);
+  assert.match(css, /\.app-fullscreen \.settings-panel:not\(\[hidden\]\)/);
   assert.match(sw, /mynaia-static-v10/);
   assert.match(sw, /url\.pathname\.startsWith\('\/api\/'\)/);
   assert.match(sw, /cache: 'no-store'/);
