@@ -12,10 +12,10 @@ export async function renderLongitudinalPdf(detail) {
   const chunks = [];
   doc.on('data', (chunk) => chunks.push(chunk));
   const complete = new Promise((resolve, reject) => { doc.on('end', () => resolve(Buffer.concat(chunks))); doc.on('error', reject); });
-  const heading = (title) => { if (doc.y > 730) doc.addPage();
-    doc.moveDown(0.6).font('Helvetica-Bold').fontSize(11.5).fillColor('#153145').text(title).moveDown(0.25); };
+  const heading = (title) => { if (doc.y > 760) doc.addPage();
+    doc.moveDown(0.34).font('Helvetica-Bold').fontSize(11.5).fillColor('#153145').text(title).moveDown(0.16); };
   const paragraph = (value) => doc.font('Helvetica').fontSize(9.5).fillColor('#263c49')
-    .text(safe(value) || 'Belum tersedia.', { lineGap: 3 }).moveDown(0.27);
+    .text(safe(value) || 'Belum tersedia.', { lineGap: 2.5 }).moveDown(0.17);
   const bullets = (items, format = (x) => x) => {
     if (!items?.length) { paragraph('Belum tersedia.'); return; }
     for (const item of items) paragraph(`- ${safe(format(item))}`);
@@ -42,6 +42,7 @@ export async function renderLongitudinalPdf(detail) {
   heading('10. Informasi yang Masih Dibutuhkan'); bullets(data.missing_information);
   heading('11. Interpretasi Profesional'); paragraph(data.professional_interpretation || 'Belum ditambahkan.');
   heading('12. Rekomendasi Tindak Lanjut'); bullets(data.recommended_follow_up);
+  if (doc.y > 690) doc.addPage();
   heading('13. Status Verifikasi');
   paragraph(`${data.verification_status || 'AI_PRELIMINARY'}; status laporan: ${report.status.toUpperCase()}; versi ${report.version}.`);
   if (detail.reviewer) paragraph(`Ditinjau oleh: ${detail.reviewer.display_name}; peran: ${detail.reviewer.professional_role}; tanggal: ${report.reviewed_at || report.finalized_at || '-'}. Kredensial tidak diverifikasi aplikasi.`);
