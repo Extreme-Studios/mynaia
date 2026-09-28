@@ -63,3 +63,10 @@ Flow reference files, production prompts and replacement guide are in docs/flow/
 ### Validation
 
 Screenshot QA inspected Home and both precall modes at 1366x768 and 390x844, plus 768px-wide tablet Home, CSS fallback, and mobile mock fullscreen. Files are in docs/visual-qa/character-first/. All heads/ears and CTAs remain visible in the inspected views. All three routes were checked at 360, 390, 430, 768, 1024, 1366 and 1440: 21 combinations, no horizontal overflow and all posters loaded at 1086x1448. Dr. Paws desktop Start bottom is 693px within the 768px viewport. Latest local console returned zero errors/warnings. Mock fullscreen keeps compact self-view, exit and controls visible, with Three.js paused and every hero video paused/hidden. Video-present/loaded/error/autoplay behavior is tested using mocks; no actual generated video loop, live call, physical device or real GPU performance measurement is claimed. Final local gates passed: check, 60/60 tests, build, whitespace check. All tests are local/mock; no Tavus live session or minutes, no new PAL, and no change to stored Tavus voice/persona, memory, API keys, profiles, authentication or transcript ingestion.
+
+### Character-first production record
+
+- Code/assets commit: `1fd6369`, pushed to Extreme-Studios/mynaia main.
+- Existing Vercel project mynaia: deployment `dpl_9m1QXB1DapGbManDAYm7jHGPy1VE` reported READY. URL: https://mynaia-o6k8chzxs-extreme-studios-projects.vercel.app
+- Custom domain https://mynaia.extremestudiosai.com/ inspected after deployment: entry release 20, WebGPU, both 1086x1448 regenerated posters loaded, no horizontal overflow. Home and keyboard navigation to /naia precall verified. No new console errors/warnings during the final production checks.
+- Final production screenshots in character-first/: production-desktop.jpg, production-mobile.jpg, production-naia-mobile.jpg. No Start or live conversation action was taken. Google Flow generation remains manual; reference stills and prompts are ready.
