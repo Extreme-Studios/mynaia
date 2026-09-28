@@ -12,9 +12,9 @@ export async function inspectTavusProfile(config, { fetchImpl = fetch } = {}) {
       });
     } catch { throw new TavusError('NETWORK_ERROR', 'Tavus tidak dapat dihubungi.'); }
     if (response.status === 401 || response.status === 403) {
-      throw new TavusError('PROFILE_AUTH_FAILED', `Autentikasi Tavis ${config.profile} gagal.`, 502);
+      throw new TavusError('PROFILE_AUTH_FAILED', `Autentikasi Tavus ${config.profile} gagal.`, 502);
     }
-    if (!response.ok) throw new TavusError('API_ERROR', `Validasi Tavis ${config.profile} gagal (HTTP ${response.status}).`, 502);
+    if (!response.ok) throw new TavusError('API_ERROR', `Validasi Tavus ${config.profile} gagal (HTTP ${response.status}).`, 502);
     try { return await response.json(); }
     catch { throw new TavusError('MALFORMED_RESPONSE', 'Respons Tavus tidak valid.'); }
   }

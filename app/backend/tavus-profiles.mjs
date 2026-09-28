@@ -30,10 +30,10 @@ export function resolveTavusProfile(number, env = process.env) {
 
 export function modeProfileError(config, mode) {
   if (mode === 'naya' && (!config.apiKey || !config.nayaPalId || !config.nayaFaceId)) {
-    return new TavusError('PROFILE_NOT_CONFIGURED', `Naia belum dikonfigurasi untuk Tavis ${config.profile}.`, 503);
+    return new TavusError('PROFILE_NOT_CONFIGURED', `Naia belum dikonfigurasi untuk Tavus ${config.profile}.`, 503);
   }
   if (mode === 'dr_paws' && (!config.apiKey || !config.drPawsPalId || !config.drPawsFaceId)) {
-    return new TavusError('PROFILE_NOT_CONFIGURED', `Dr. Paws belum dikonfigurasi untuk Tavis ${config.profile}.`, 503);
+    return new TavusError('PROFILE_NOT_CONFIGURED', `Dr. Paws belum dikonfigurasi untuk Tavus ${config.profile}.`, 503);
   }
   return null;
 }

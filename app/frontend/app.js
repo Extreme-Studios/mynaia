@@ -407,12 +407,12 @@ async function refreshAdminProfiles() {
   for (const item of data.profiles) {
     const option = document.createElement('option');
     option.value = String(item.profile);
-    option.textContent = `Tavis ${item.profile} — ${item.configured ? 'Configured' : item.apiConfigured ? 'Partially configured' : 'Not configured'}`;
+    option.textContent = `Tavus ${item.profile} — ${item.configured ? 'Configured' : item.apiConfigured ? 'Partially configured' : 'Not configured'}`;
     select.append(option);
   }
   select.value = String(data.active);
   const selected = data.profiles.find((item) => item.active);
-  $('#admin-profile-status').textContent = `Aktif: Tavis ${data.active}. Naia: ${selected?.nayaConfigured ? 'siap' : 'belum dikonfigurasi'}. Dr. Paws: ${selected?.drPawsConfigured ? 'siap' : 'belum dikonfigurasi'}.`;
+  $('#admin-profile-status').textContent = `Aktif: Tavus ${data.active}. Naia: ${selected?.nayaConfigured ? 'siap' : 'belum dikonfigurasi'}. Dr. Paws: ${selected?.drPawsConfigured ? 'siap' : 'belum dikonfigurasi'}.`;
   $('#admin-message').textContent = '';
 }
 
@@ -442,7 +442,7 @@ $('#admin-inspect').addEventListener('click', async () => {
     const result = await apiRequest('/api/admin/tavus-profile/inspect', { method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ profile: Number($('#admin-profile').value) }) });
-    $('#admin-message').textContent = `Tavis ${result.profile}: autentikasi ${result.apiAuthenticated ? 'berhasil' : 'belum ada key'}; Naia PAL ${result.nayaPalAccessible ? 'tersedia' : 'belum tersedia'}; Dr. Paws PAL ${result.drPawsPalAccessible ? 'tersedia' : 'belum tersedia'}; Face Naia ${result.nayaFaceAccessible ? 'tersedia' : 'belum tersedia'}; Face Dr. Paws ${result.drPawsFaceAccessible ? 'tersedia' : 'belum tersedia'}.`;
+    $('#admin-message').textContent = `Tavus ${result.profile}: autentikasi ${result.apiAuthenticated ? 'berhasil' : 'belum ada key'}; Naia PAL ${result.nayaPalAccessible ? 'tersedia' : 'belum tersedia'}; Dr. Paws PAL ${result.drPawsPalAccessible ? 'tersedia' : 'belum tersedia'}; Face Naia ${result.nayaFaceAccessible ? 'tersedia' : 'belum tersedia'}; Face Dr. Paws ${result.drPawsFaceAccessible ? 'tersedia' : 'belum tersedia'}.`;
   } catch (error) { $('#admin-message').textContent = error.message; }
   finally { $('#admin-inspect').disabled = false; }
 });
