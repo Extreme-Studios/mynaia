@@ -10,6 +10,8 @@ Web derivatives are 720px JPG posters (~70 KB each) and silent 480×854, 15 fps 
 
 Local browser validation showed both hero videos `readyState=4`, `paused=false`, and `currentTime` progressing; a saved screenshot is in `docs/visual-qa/flow-video/local-home.jpg`. No automatic replay after a media error. Reduced motion, hidden page, and active Tavus call pause decorative loops. Human visual review of both clips and mobile/device playback remains required. Earlier sections of this document describe the previous release and are retained as history.
 
+Production deployment `dpl_HAn9PATR4Qqsccw3TdZkqWZWWdwc` was READY and served release 21 on `mynaia.extremestudiosai.com`. The two Home videos and each character's precall video reached `readyState=4`, played with advancing time, and showed the correct character. A production screenshot is in `docs/visual-qa/flow-video/production-home.jpg`. The fresh production browser tab reported no console errors or warnings. The access gate worked. No live conversation was started. Mobile playback and real-device performance were not verified in this production pass.
+
 # Milestone 6 — Cinematic 3D rebuild
 
 Status: implementation ready for human visual approval. No live Tavus conversation was created during this rebuild.
