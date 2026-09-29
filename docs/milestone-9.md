@@ -37,3 +37,7 @@ Physical-device WebRTC and native cookie persistence require validation. Native 
 CLI dependency audit reports a moderate uuid issue in Capacitor CLI's iOS xcode tooling; this dev-only dependency is not bundled into APK. No forced incompatible downgrade was applied.
 
 Status: IMPLEMENTATION READY; **not PASSED** until physical-device WebRTC validation.
+
+## Source and deployment verification
+
+Implementation commit: `0cb3797`, pushed to `Extreme-Studios/mynaia` main. Existing Vercel project deployment `dpl_8WXXminaovW6s3eCuMA5TPpzxvEf` is READY. Production Home and platform adapter return HTTP 200; `/api/health` returns `ok`. Production profile labels are **Profil 1–8**, with the old provider-number label absent. Android artifacts/caches/keystores are excluded from Vercel upload as well as Git.
