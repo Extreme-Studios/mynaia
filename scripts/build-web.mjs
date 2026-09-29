@@ -12,7 +12,7 @@ for (const name of await readdir(destination)) {
 }
 await mkdir(join(destination, 'icons'), { recursive: true });
 for (const name of ['index.html', 'styles.css', 'app.js', 'dashboard.html', 'dashboard.js', 'dashboard.css', 'case.html', 'case.js', 'case.css', 'controller.mjs', 'manifest.webmanifest', 'sw.js',
-  'self-view.mjs', 'motion.mjs', 'hero-media.mjs', 'icons/icon-192.png', 'icons/icon-512.png']) {
+  'platform.mjs', 'self-view.mjs', 'motion.mjs', 'hero-media.mjs', 'icons/icon-192.png', 'icons/icon-512.png']) {
   await copyFile(join(source, name), join(destination, name));
 }
 await copyFile(join(root, 'node_modules', '@daily-co', 'daily-js', 'dist', 'daily-esm.js'), join(destination, 'daily-esm.js'));

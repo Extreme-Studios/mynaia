@@ -1,5 +1,5 @@
-const CACHE = 'mynaia-static-v23';
-const STATIC = new Set(['/', '/index.html', '/naia', '/naya', '/dr-paws', '/styles.css', '/app.js', '/controller.mjs', '/self-view.mjs', '/motion.mjs', '/gsap.min.js',
+const CACHE = 'mynaia-static-v24';
+const STATIC = new Set(['/', '/index.html', '/naia', '/naya', '/dr-paws', '/styles.css', '/app.js', '/platform.mjs', '/controller.mjs', '/self-view.mjs', '/motion.mjs', '/gsap.min.js',
   '/hero-media.mjs', '/assets/hero/naia-hero-poster.jpg', '/assets/hero/dr-paws-hero-poster.jpg', '/cinematic.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png']);
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll([...STATIC].map((path) => new Request(path, { cache: 'reload' })))).then(() => self.skipWaiting()));

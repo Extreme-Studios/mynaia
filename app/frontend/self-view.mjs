@@ -1,5 +1,5 @@
 // Daily owns the camera track. This module only renders its existing local track outside Prebuilt.
-export function createSelfView({ createFrame, container, video, panel, layout, onJoined = () => {}, onError = () => {} }) {
+export function createSelfView({ createFrame, container, video, panel, layout, onJoined = () => {}, onError = () => {}, startVideoOff = false }) {
   let call;
   let mode = 'compact';
   let disposed = false;
@@ -73,7 +73,7 @@ export function createSelfView({ createFrame, container, video, panel, layout, o
     }
     call.on('joined-meeting', () => { if (!disposed) { syncLocal(); onJoined(); } });
     call.on('error', () => { if (!disposed) onError(); });
-    try { await call.join({ url }); }
+    try { await call.join({ url, ...(startVideoOff ? { startVideoOff: true } : {}) }); }
     catch (error) { if (!disposed) onError(); throw error; }
     syncLocal();
   }

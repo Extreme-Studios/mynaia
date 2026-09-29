@@ -45,7 +45,7 @@ test('motion dan CSS menjaga preferensi aksesibilitas serta memprioritaskan call
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
   assert.match(css, /\.subject-choice\[aria-pressed=true\]/);
   assert.match(css, /\.app-fullscreen \.settings-panel:not\(\[hidden\]\)/);
-  assert.match(sw, /mynaia-static-v23/);
+  assert.match(sw, /mynaia-static-v24/);
   assert.match(sw, /url\.pathname\.startsWith\('\/api\/'\)/);
   assert.match(sw, /cache: 'no-store'/);
   assert.doesNotMatch(sw, /daily-esm\.js/);

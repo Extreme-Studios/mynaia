@@ -17,3 +17,8 @@ public/
 supabase/.temp/
 tmp/
 docs/flow/generated/
+
+release/android/
+*.jks
+*.keystore
+keystore.properties

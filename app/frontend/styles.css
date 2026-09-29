@@ -206,3 +206,6 @@ body[data-hero-focus=naya] .naya-zone .zone-copy,body[data-hero-focus=paws] .paw
  .character-zone .zone-copy{padding-bottom:30px;max-width:330px}
  .character-worlds:after{background:radial-gradient(ellipse 50% 20% at 50% 52%,#668fa11c,transparent 100%)}
 }
+
+/* Native/Web safe areas; keyboard resize remains enabled. */
+body{padding-bottom:env(safe-area-inset-bottom,0px)} header{padding-top:env(safe-area-inset-top,0px)}

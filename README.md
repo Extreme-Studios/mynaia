@@ -86,3 +86,11 @@ Fungsi Vercel tidak menyimpan state sesi di memori. Tavus membatasi conversation
 Home and precall use regenerated Anna Casual / Naia and Dr. Paws portrait assets. Three.js remains atmospheric (depth, particles, camera, light paths), with no orb/egg substitute characters. The HTML media layer supports required PNG posters and optional muted MP4/WebM loops discovered at build time. Missing/failed videos retain posters; reduced motion, hidden tabs and active calls pause decorative playback. Existing memory, live Tavus, subject/profile and authentication flows are unchanged.
 
 See docs/flow/README.md for exact filenames, asset replacement, and manual Google Flow prompts. The regenerated stills are image-to-video references, not official stock source photos or a claim of exact likeness. Hero videos are decorative and never replace the live Tavus face.
+
+## Android edition (Milestone 9)
+
+MyNaiA now also has a Capacitor Android project at `android/`, using the same bundled frontend and production backend. Package: `com.extremestudios.mynaia`. API profiles appear as **Profil 1–8**.
+
+Build: `npm run android:build:debug` or `npm run android:build:release`. See [Android guide](docs/android.md) and [Milestone 9](docs/milestone-9.md) for JDK/SDK, signing, permissions, session cookies, private PDF sharing and device validation. APK/AAB files are local under `release/android/` and are not committed. Production signing is not configured yet; release artifacts are unsigned.
+
+No automated live conversations are used. Physical-device WebRTC validation is required before calling the Android edition PASSED.

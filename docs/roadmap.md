@@ -12,3 +12,7 @@
 | 8 — Dr. Paws Longitudinal Assessment & Multi-Source Review | Kasus per anak, timeline, sumber orang tua/guru/profesional, analisis lintas sesi, reviewer, audit, planner, dan PDF longitudinal. | Implementasi siap; validasi longitudinal manusia diperlukan. |
 
 Uji keselamatan, aksesibilitas pada perangkat nyata, retensi data, biaya, dan pilot terbatas tetap pekerjaan terpisah. Milestone 7 bukan tes diagnostik/klinis dan belum memiliki login multi-user.
+
+## Milestone 9 — MyNaiA Android Edition
+
+Capacitor shell reuses the current frontend and backend. Local/mock checks and APK/AAB packaging are implemented. Production signing and physical-device permission/auth/WebRTC/PDF validation remain gates; zero automatic calls. No Milestone 10 work is included.

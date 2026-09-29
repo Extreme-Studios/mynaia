@@ -1,0 +1,23 @@
+{
+  "appId": "com.extremestudios.mynaia",
+  "appName": "MyNaiA",
+  "webDir": "dist/android-web",
+  "server": {
+    "hostname": "localhost",
+    "androidScheme": "https",
+    "cleartext": false
+  },
+  "android": {
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": false
+    },
+    "CapacitorCookies": {
+      "enabled": false
+    }
+  },
+  "loggingBehavior": "none"
+}

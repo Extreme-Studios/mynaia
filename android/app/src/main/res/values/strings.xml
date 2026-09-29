@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MyNaiA</string>
+    <string name="title_activity_main">MyNaiA</string>
+    <string name="package_name">com.extremestudios.mynaia</string>
+    <string name="custom_url_scheme">com.extremestudios.mynaia</string>
+</resources>

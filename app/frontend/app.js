@@ -1,3 +1,4 @@
+import { apiFetch, isAndroid, installNativeNavigation, prepareMicrophone, setNativeCall, setNativeFullscreen, backAction } from './platform.mjs';
 import { createHeroMedia } from './hero-media.mjs?v23';
 import { createConversationController } from './controller.mjs?v23';
 import { createSelfView } from './self-view.mjs?v23';
@@ -36,6 +37,7 @@ if (mode === 'dr_paws') {
   catch { assessmentSetup = null; }
 }
 let room;
+let nativeCallActive = false;
 let selfViewMode;
 try { selfViewMode = localStorage.getItem('mynaia.selfView') === 'hidden' ? 'hidden' : 'compact'; }
 catch { selfViewMode = 'compact'; }
@@ -79,7 +81,7 @@ updateSelfViewControl();
 async function mountRoom(url, conversationId) {
   const { default: Daily } = await import('/daily-esm.js');
   if (controller.snapshot().session?.conversationId !== conversationId) return;
-  room = createSelfView({ createFrame: Daily.createFrame.bind(Daily), container: $('#stage'),
+  room = createSelfView({ startVideoOff: isAndroid(), createFrame: Daily.createFrame.bind(Daily), container: $('#stage'),
     video: $('#self-view-video'), panel: $('#self-view'), layout: $('#room-layout'),
     onJoined: () => controller.roomLoaded(),
     onError: () => { if (controller.snapshot().session) controller.end('room-error'); },
@@ -89,7 +91,7 @@ async function mountRoom(url, conversationId) {
 }
 
 async function apiRequest(path, options = {}) {
-  const response = await fetch(path, { cache: 'no-store', ...options });
+  const response = await apiFetch(path, { cache: 'no-store', ...options });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     if (response.status === 401 && data.code === 'ACCESS_REQUIRED') {
@@ -165,11 +167,13 @@ function updateFullscreen() {
   $('#fullscreen').querySelector('span').textContent = active ? 'Keluar' : 'Fullscreen';
 }
 async function enterFullscreen() {
+  if (isAndroid()) { await setNativeFullscreen(true); fullscreenFallback = true; updateFullscreen(); return; }
   try { if ($('#app').requestFullscreen) await $('#app').requestFullscreen(); else fullscreenFallback = true; }
   catch { fullscreenFallback = true; }
   updateFullscreen();
 }
 async function exitFullscreen() {
+  if (isAndroid()) await setNativeFullscreen(false);
   if (document.fullscreenElement) await document.exitFullscreen().catch(() => {});
   fullscreenFallback = false;
   updateFullscreen();
@@ -180,6 +184,7 @@ function render(state) {
   const active = Boolean(state.session);
   const pending = state.phase === 'connecting';
   document.body.classList.toggle('call-active', active);
+  if (active !== nativeCallActive) { nativeCallActive = active; setNativeCall(active).catch(() => {}); }
   cinematic.setCallActive(active);
   heroMedia.setCallActive(active);
   $('#call-view').classList.toggle('in-call', active);
@@ -272,6 +277,9 @@ $('#start').addEventListener('click', async () => {
       return;
     }
   } catch { /* Permission remains under the Tavus room UI. */ }
+  try { await prepareMicrophone(mode); }
+  catch (error) { $('#error').hidden = false; $('#error').textContent = error.message; $('#native-permission-settings').hidden = !error.permanent; return; }
+  $('#native-permission-settings').hidden = true;
   controller.start();
 });
 $('#end').addEventListener('click', () => controller.end());
@@ -297,9 +305,10 @@ window.addEventListener('online', updateOffline);
 window.addEventListener('offline', updateOffline);
 window.addEventListener('pagehide', () => {
   clearInterval(statusTimer);
+  setNativeCall(false).catch(() => {});
   releaseWakeLock();
   room?.destroy();
-  if (activeId) navigator.sendBeacon(`/api/conversations/${encodeURIComponent(activeId)}/end`);
+  if (activeId && !isAndroid()) navigator.sendBeacon(`/api/conversations/${encodeURIComponent(activeId)}/end`);
 });
 
 $('#access-form').addEventListener('submit', async (event) => {
@@ -468,10 +477,27 @@ apiRequest('/api/access/status', { signal: AbortSignal.timeout?.(10000) }).then(
   setAccess(false);
   $('#access-message').textContent = 'Status akses tidak tersedia. Coba muat ulang.';
 });
-if ('serviceWorker' in navigator) {
+if (!isAndroid() && 'serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (controller.snapshot().session) return;
     location.reload();
   });
 }
+
+$('#native-permission-settings').addEventListener('click', () => globalThis.Capacitor.Plugins.MyNaia.openSettings());
+async function leaveNativeCall() {
+  if (controller.snapshot().phase === 'connecting') { alert('Tunggu sampai ruang percakapan siap.'); return false; }
+  if (!controller.snapshot().session) return true;
+  if (!confirm('Akhiri percakapan?')) return false;
+  await controller.end(); return !controller.snapshot().session;
+}
+installNativeNavigation({ onLeave: leaveNativeCall, onBack: async () => {
+  if (controller.snapshot().phase === 'connecting') { alert('Tunggu sampai ruang percakapan siap.'); return; }
+  const action = backAction({ settings: !$('#settings-panel').hidden,
+    active: Boolean(controller.snapshot().session), pathname: location.pathname });
+  if (action === 'settings') setSettings(false);
+  else if (action === 'confirm') { if (await leaveNativeCall()) location.assign('/'); }
+  else if (action === 'home') location.assign('/');
+  else globalThis.Capacitor.Plugins.MyNaia.exit();
+} });

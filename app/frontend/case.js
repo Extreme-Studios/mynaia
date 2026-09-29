@@ -1,8 +1,9 @@
+import { apiFetch, installNativeNavigation } from './platform.mjs';
 const $ = (selector) => document.querySelector(selector);
 const node = (tag, text = '', className = '') => { const element = document.createElement(tag); element.textContent = text;
   if (className) element.className = className; return element; };
 const date = (value) => value ? new Date(value).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
-const subjectId = location.pathname.split('/').at(-1);
+const subjectId = new URLSearchParams(location.search).get('subject') || location.pathname.split('/').at(-1);
 const fields = {
   PARENT: [['strengths','Kekuatan'],['interests','Minat'],['daily_routine','Rutinitas'],['school_experience','Pengalaman sekolah'],
     ['social_interaction','Interaksi sosial'],['emotional_regulation','Pengaturan emosi'],['communication','Komunikasi'],
@@ -21,7 +22,7 @@ const sourceLabel = { CHILD: 'Laporan anak', PARENT: 'Laporan orang tua', TEACHE
 let data, reviewers = [], editingSource = null;
 async function api(action, { method = 'GET', body, ref, id = subjectId } = {}) {
   const query = new URLSearchParams({ action, ...(id ? { id } : {}), ...(ref ? { ref } : {}) });
-  const response = await fetch(`/api/dr-paws/case?${query}`, { method, cache: 'no-store',
+  const response = await apiFetch(`/api/dr-paws/case?${query}`, { method, cache: 'no-store',
     ...(body ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}) });
   if (action === 'pdf' && response.ok) return response.blob();
   const result = await response.json().catch(() => ({}));
@@ -204,7 +205,7 @@ function renderPlans() {
     const card = node('article','', 'case-card'); card.append(node('strong', `${date(plan.created_at)} · ${plan.status}`));
     for (const goal of plan.goals) card.append(node('p', `• ${goal}`));
     const launch = node('button','Buat Sesi Follow-up'); launch.type = 'button'; launch.addEventListener('click', async () => {
-      try { reviewerId(); const response = await fetch('/api/dr-paws/assessment?action=templates', { cache:'no-store' });
+      try { reviewerId(); const response = await apiFetch('/api/dr-paws/assessment?action=templates', { cache:'no-store' });
         if (!response.ok) throw new Error('Template follow-up belum tersedia.');
         const templates = (await response.json()).templates || [];
         const template = templates.find((item) => item.slug === 'follow-up');
@@ -255,13 +256,13 @@ async function load() {
   } catch (error) { notice('Data belum berhasil dimuat. ' + error.message, true); }
 }
 async function boot() {
-  const response = await fetch('/api/access/status', { cache:'no-store' });
+  const response = await apiFetch('/api/access/status', { cache:'no-store' });
   const status = await response.json();
   if (!status.authorized) { $('#gate').hidden = false; $('#workspace').hidden = true; return; }
   await load();
 }
 $('#login').addEventListener('submit', async (event) => { event.preventDefault(); try {
-  const response = await fetch('/api/access/login', { method:'POST', headers:{'content-type':'application/json'},
+  const response = await apiFetch('/api/access/login', { method:'POST', headers:{'content-type':'application/json'},
     body:JSON.stringify({code:$('#code').value}) });
   if (!response.ok) throw new Error('Password salah.'); $('#code').value = ''; await boot();
 } catch(error) { $('#login-error').textContent = error.message; } });
@@ -297,3 +298,5 @@ $('#plan-form').addEventListener('submit', async (event) => { event.preventDefau
 $('#reload').addEventListener('click', load); $('#retry').addEventListener('click', load);
 $('#source-date').value = new Date().toISOString().slice(0,10); sourceFields('PARENT');
 boot().catch((error) => notice('Data belum berhasil dimuat. ' + error.message, true));
+
+installNativeNavigation();

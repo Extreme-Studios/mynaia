@@ -12,3 +12,12 @@ public/
 docs/
 tests/
 app/frontend/assets/hero/*-hero-poster.png
+
+android/
+release/
+dist/
+tmp/
+tmp-*
+*.jks
+*.keystore
+keystore.properties

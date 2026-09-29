@@ -1,3 +1,4 @@
+import { apiFetch, installNativeNavigation } from './platform.mjs';
 const $ = (selector) => document.querySelector(selector);
 const make = (tag, text = '', className = '') => { const node = document.createElement(tag); node.textContent = text; if (className) node.className = className; return node; };
 const date = (value) => value ? new Date(value).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
@@ -21,14 +22,14 @@ function evidenceLinks(container, items = []) {
 
 async function api(action, { id, method = 'GET', body } = {}) {
   const query = new URLSearchParams({ action, ...(id ? { id } : {}) });
-  const response = await fetch(`/api/dr-paws/assessment?${query}`, { method, cache: 'no-store',
+  const response = await apiFetch(`/api/dr-paws/assessment?${query}`, { method, cache: 'no-store',
     ...(body ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}) });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
   return data;
 }
 async function caseApi(action, body) {
-  const response = await fetch(`/api/dr-paws/case?action=${encodeURIComponent(action)}`, { method: body ? 'POST' : 'GET', cache: 'no-store',
+  const response = await apiFetch(`/api/dr-paws/case?action=${encodeURIComponent(action)}`, { method: body ? 'POST' : 'GET', cache: 'no-store',
     ...(body ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}) });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
@@ -296,16 +297,18 @@ $('#retry').addEventListener('click', () => refresh().then(() => { $('#retry').h
 $('#login').addEventListener('submit', async (event) => {
   event.preventDefault(); $('#login-error').textContent = '';
   try {
-    const response = await fetch('/api/access/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: $('#code').value }) });
+    const response = await apiFetch('/api/access/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: $('#code').value }) });
     if (!response.ok) throw new Error('Password salah.');
     $('#code').value = ''; await boot();
   } catch (error) { $('#login-error').textContent = error.message; }
 });
 async function boot() {
-  const status = await (await fetch('/api/access/status', { cache: 'no-store' })).json();
+  const status = await (await apiFetch('/api/access/status', { cache: 'no-store' })).json();
   if (!status.authorized) { $('#gate').hidden = false; $('#workspace').hidden = true; return; }
   $('#gate').hidden = true; $('#workspace').hidden = false;
   try { await refresh(); $('#consent-panel').hidden = true; }
   catch (error) { notice(`Data belum berhasil dimuat. ${error.message}`); $('#retry').hidden = false; }
 }
 boot().catch((error) => { $('#login-error').textContent = error.message; });
+
+installNativeNavigation();

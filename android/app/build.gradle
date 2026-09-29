@@ -1,0 +1,74 @@
+apply plugin: 'com.android.application'
+
+def signingValues = new Properties()
+def signingFile = rootProject.file('keystore.properties')
+if (signingFile.exists()) signingFile.withInputStream { signingValues.load(it) }
+def signingPath = System.getenv('MYNAIA_KEYSTORE') ?: signingValues['storeFile']
+def signingPassword = System.getenv('MYNAIA_STORE_PASSWORD') ?: signingValues['storePassword']
+def signingAlias = System.getenv('MYNAIA_KEY_ALIAS') ?: signingValues['keyAlias']
+def signingKeyPassword = System.getenv('MYNAIA_KEY_PASSWORD') ?: signingValues['keyPassword']
+def signingAvailable = [signingPath, signingPassword, signingAlias, signingKeyPassword].every { it }
+
+android {
+    signingConfigs {
+        if (signingAvailable) {
+            production {
+                storeFile file(signingPath)
+                storePassword signingPassword
+                keyAlias signingAlias
+                keyPassword signingKeyPassword
+            }
+        }
+    }
+    namespace = "com.extremestudios.mynaia"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "com.extremestudios.mynaia"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    buildTypes {
+        release {
+            if (signingAvailable) signingConfig signingConfigs.production
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}
