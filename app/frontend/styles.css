@@ -209,3 +209,18 @@ body[data-hero-focus=naya] .naya-zone .zone-copy,body[data-hero-focus=paws] .paw
 
 /* Native/Web safe areas; keyboard resize remains enabled. */
 body{padding-bottom:env(safe-area-inset-bottom,0px)} header{padding-top:env(safe-area-inset-top,0px)}
+
+/* Mobile portrait call: use the available phone height for the avatar. */
+@media (max-width:700px) and (orientation:portrait) {
+  .call-view.in-call {height:calc(100dvh - 76px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));padding-top:0;display:flex;flex-direction:column;gap:0;}
+  .call-view.in-call .call-heading,.call-view.in-call .call-hint {display:none;}
+  .call-view.in-call .room-layout {flex:1;min-height:0;}
+  .call-view.in-call .stage {height:100%;min-height:0;}
+  .call-view.in-call .controls {flex:none;margin:0;padding:8px 0;gap:8px;}
+  .call-view.in-call .controls button {min-width:48px;padding:0 12px;}
+  .call-view.in-call .controls button span {display:none;}
+  .call-view.in-call .self-view {bottom:12px;}
+  .app-fullscreen .call-view.in-call {height:100dvh;}
+  .app-fullscreen .call-view.in-call .controls {padding:8px;}
+  .app-fullscreen .call-view.in-call .self-view {bottom:90px;}
+}

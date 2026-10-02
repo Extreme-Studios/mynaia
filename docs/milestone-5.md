@@ -65,3 +65,9 @@ Manual plan, only when the user chooses to spend Tavus minutes:
 4. Dr. Paws: start only after checking minute balance, verify the cartoon Face, Bahasa Indonesia, child-friendly behavior, and absence of Naia personal recall.
 
 No Dr. Paws assessment, structured interviews, parent/professional review, or clinical reports are part of this patch.
+
+## Mobile portrait call layout — 2 Oktober 2026
+
+Area video panggilan aktif di HP portrait memakai tinggi viewport yang tersisa setelah header dan tombol. Heading besar disembunyikan selama panggilan; kontrol menjadi ikon dengan label aksesibilitas tetap tersedia. Self-view tetap kecil di pojok bawah, dan fullscreen tetap memenuhi layar. Layout desktop, Home, dan pipeline percakapan tidak berubah.
+
+Validasi mock: 360×640 (video 332×496), 390×844 (362×700), 430×932 (402×788), desktop 1366×768, landscape 844×390, serta fullscreen portrait. Tidak ditemukan overflow horizontal atau console error dalam mock. Landscape mempertahankan layout lama dan dapat membutuhkan scroll vertikal pada layar pendek. Check, tests, dan build dijalankan; tidak membuat conversation atau memakai menit Tavus. CSS dan service-worker cache diperbarui ke v25. Framing video asli tetap perlu dicek pengguna saat panggilan berikutnya.
