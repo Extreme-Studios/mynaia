@@ -43,7 +43,8 @@ test('PAL dibuat sekali, disimpan, lalu dipakai ulang untuk conversation', async
     assert.equal(conversationPayload.pal_id, 'p12345');
     assert.equal(Object.hasOwn(conversationPayload, 'participant_tags'), false);
     assert.equal(Object.hasOwn(conversationPayload, 'memory_stores'), false);
-    assert.equal(conversationPayload.dynamic_greeting, true);
+    assert.equal(conversationPayload.dynamic_greeting, false);
+    assert.match(conversationPayload.custom_greeting, /^Selamat (pagi|siang|sore|malam)\./);
     assert.match(conversationPayload.conversational_context, /Jangan selalu memakai kalimat sama/);
     const saved = await readFile(stateFile, 'utf8');
     assert.match(saved, /p12345/);

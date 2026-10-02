@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { GEMINI_BASE_URL, DEFAULT_GEMINI_MODEL } from './gemini.mjs';
 import { MEMORY_CONTEXT } from './memory.mjs';
 import { parseDuration, parseMode } from './modes.mjs';
+import { naiaSessionOpening } from './naia-greeting.mjs';
 
 export const FACE_ID = 'rc9cff32ceba';
 export const MAX_CALL_SECONDS = 300;
@@ -48,6 +49,7 @@ export function makeTavusClient({
   fetchImpl = fetch,
   baseUrl = 'https://tavusapi.com',
   gemini = null,
+  openingFactory = naiaSessionOpening,
 } = {}) {
   parseMode(mode);
   const usingGemini = Boolean(gemini);
@@ -112,8 +114,8 @@ export function makeTavusClient({
       pipeline_mode: 'full',
       default_face_id: FACE_ID,
       languages: ['id'],
-      greeting: 'Hai, aku Naia. Senang kamu mampir.',
-      dynamic_greeting: false,
+      greeting: '',
+      dynamic_greeting: true,
       layers: {
         stt: { stt_engine: 'tavus-auto' },
         ...(usingGemini ? { llm: {
@@ -158,7 +160,7 @@ export function makeTavusClient({
       if (mode === 'dr_paws' && !existingId) throw new TavusError('DR_PAWS_NOT_CONFIGURED', 'Dr. Paws belum dikonfigurasi.', 503);
       if (!existingId) return createNayaPal();
       const data = await request('GET', `/v2/pals/${encodeURIComponent(existingId)}`);
-      const expectedName = mode === 'naya' ? /^naya/i : /^dr\.? paws/i;
+      const expectedName = mode === 'naya' ? /^(?:naya|naia)/i : /^dr\.? paws/i;
       if (data.pal_id !== existingId || !expectedName.test(String(data.pal_name || ''))) {
         throw new TavusError('INVALID_PAL', 'PAL yang dikonfigurasi tidak sesuai mode.', 409);
       }
@@ -190,13 +192,15 @@ export function makeTavusClient({
   async function createConversation({ conversationalContext = '', durationMinutes = 5 } = {}) {
     const maxCallDuration = parseDuration(durationMinutes);
     const palId = await getOrCreateNayaPal();
+    const opening = mode === 'naya' ? openingFactory() : null;
     let data;
     try { data = await request('POST', '/v2/conversations', {
       pal_id: palId,
       face_id: faceId,
       conversation_name: mode === 'naya' ? (usingGemini ? 'Naia Gemini Test' : 'Naia MyNaiA') : 'Dr. Paws MyNaiA',
-      conversational_context: mode === 'naya' ? (conversationalContext ? `${MEMORY_CONTEXT}\n${conversationalContext}` : MEMORY_CONTEXT) : conversationalContext,
-      dynamic_greeting: true,
+      conversational_context: mode === 'naya' ? [MEMORY_CONTEXT, opening.context, conversationalContext].filter(Boolean).join('\n') : conversationalContext,
+      dynamic_greeting: mode !== 'naya',
+      ...(opening ? { custom_greeting: opening.greeting } : {}),
       properties: {
         languages: ['id'],
         max_call_duration: maxCallDuration,

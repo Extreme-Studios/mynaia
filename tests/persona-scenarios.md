@@ -30,3 +30,14 @@ Jalankan sebagai skenario manual di sesi yang memang sudah dibuka. Nilai teks, n
 | 24 | Context | Tadi aku bilang capek; sekarang aku mau bercanda. | Mengikuti perubahan nada. | Memaksa kembali ke topik lelah. |
 
 Untuk live Milestone 3, utamakan skenario 1, 10, 4, 16, 17, 18, dan 21 bila aman dilakukan. Catat respons yang terdengar serta latency perkiraan; hasil persepsi manusia tetap milik penguji manusia.
+
+## Persona Naia: ekonomi, marketing, dan sahabat — mock/manual checklist
+
+Belum divalidasi lewat percakapan model/live. Saat sesi pengguna berikutnya, cek:
+- Hubungkan siang/sore/malam WIB ke sapaan; jangan mengulang perkenalan asisten.
+- Minta strategi pemasaran proyek dengan budget kecil: satu prioritas, alasan, eksperimen, metrik; paling banyak satu pertanyaan penting.
+- Uji ide yang lemah: Naia memberi pendapat berbeda dengan alasan, tidak asal mengiyakan.
+- Minta angka omzet tanpa data: asumsi eksplisit, tanpa jaminan atau statistik karangan.
+- Cerita capek: dengarkan tanpa langsung memaksa solusi bisnis.
+- Tanyakan proyek yang tidak ada di konteks: tidak mengarang ingatan.
+- Beralih topik/menyela: ikuti pengguna; tidak terus menginterogasi.
