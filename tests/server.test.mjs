@@ -79,7 +79,7 @@ test('password awal membuka dashboard dan API profil lokal tanpa login kedua', a
     assert.match(page, /id="app" class="app-shell" hidden/);
     assert.match(page, /id="access-gate"/);
     assert.match(page, /app\.js\?v=23/);
-    assert.match(page, /styles\.css\?v=25/);
+    assert.match(page, /styles\.css\?v=26/);
     assert.doesNotMatch(page, /id="admin-login"|id="admin-secret"/);
     assert.equal((await fetch(`${base}/api/admin/tavus-profiles`)).status, 401);
     assert.equal((await fetch(`${base}/api/admin/tavus-profile`, { method: 'POST' })).status, 401);

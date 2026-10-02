@@ -71,3 +71,9 @@ No Dr. Paws assessment, structured interviews, parent/professional review, or cl
 Area video panggilan aktif di HP portrait memakai tinggi viewport yang tersisa setelah header dan tombol. Heading besar disembunyikan selama panggilan; kontrol menjadi ikon dengan label aksesibilitas tetap tersedia. Self-view tetap kecil di pojok bawah, dan fullscreen tetap memenuhi layar. Layout desktop, Home, dan pipeline percakapan tidak berubah.
 
 Validasi mock: 360×640 (video 332×496), 390×844 (362×700), 430×932 (402×788), desktop 1366×768, landscape 844×390, serta fullscreen portrait. Tidak ditemukan overflow horizontal atau console error dalam mock. Landscape mempertahankan layout lama dan dapat membutuhkan scroll vertikal pada layar pendek. Check, tests, dan build dijalankan; tidak membuat conversation atau memakai menit Tavus. CSS dan service-worker cache diperbarui ke v25. Framing video asli tetap perlu dicek pengguna saat panggilan berikutnya.
+
+## Self-view portrait 9:16 — 3 Oktober 2026
+
+Preview kamera pengguna sekarang portrait 9:16 pada desktop, HP, dan fullscreen. HP memakai lebar maksimal 96 px agar panel tetap compact. Video memakai object-fit cover sehingga tidak diregangkan; frame sumber landscape dapat terpotong di kiri/kanan. Perubahan ini mengatur tampilan preview lokal, bukan rasio encoding kamera yang dikirim provider.
+
+Mock browser: rasio lebar/tinggi sekitar 0,5625 pada 360×640, 390×844, 430×932, desktop 1366×768, dan fullscreen HP; tidak ada overflow horizontal. Tidak membuka kamera asli atau conversation Tavus. CSS/service-worker v26 untuk invalidasi cache. Check, 99 tests, dan build lulus.
