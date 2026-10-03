@@ -74,7 +74,9 @@ export function makeTavusClient({
       throw new TavusError('NETWORK_ERROR', 'Tavus tidak dapat dihubungi.');
     }
     if (!response.ok) {
-      throw new TavusError('API_ERROR', `Tavus menolak permintaan (HTTP ${response.status}).`, 502);
+      const error = new TavusError('API_ERROR', `Tavus menolak permintaan (HTTP ${response.status}).`, 502);
+      error.upstreamStatus = response.status;
+      throw error;
     }
     if (response.status === 204) return {};
     try {
@@ -210,7 +212,9 @@ export function makeTavusClient({
     }); }
     catch (error) {
       if (error.code === 'API_ERROR') {
-        throw new TavusError('CREATE_FAILED', 'Profil Tavus aktif tidak dapat membuat sesi baru. Periksa usage atau pilih profil lain di pengaturan admin.', 502);
+        // Preserve only numeric status; never log request headers, provider bodies or credentials.
+        console.warn('Conversation creation rejected', { mode, upstreamStatus: error.upstreamStatus });
+        throw new TavusError('CREATE_FAILED', `Profil aktif ditolak saat membuat sesi (HTTP ${error.upstreamStatus}). Periksa batas penggunaan dan konfigurasi profil.`, 502);
       }
       throw error;
     }

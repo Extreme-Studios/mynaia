@@ -138,3 +138,21 @@ test('penolakan Tavus saat create conversation tidak membocorkan respons atau cr
   await assert.rejects(client.createConversation(), (error) => error.code === 'CREATE_FAILED' &&
     !error.message.includes('private-test-key') && !error.message.includes('plan unavailable'));
 });
+
+test('conversation rejection preserves upstream status without body or credential leakage or retries', async () => {
+  for (const status of [400,401,402,403,429,500]) {
+    let creations=0;
+    const client=makeTavusClient({apiKey:'hidden-test-api-key',envPalId:'p-existing',fetchImpl:async(url,options)=>{
+      if(options.method==='GET') return Response.json({pal_id:'p-existing',pal_name:'Naia',default_face_id:FACE_ID});
+      creations++;
+      return Response.json({message:'hidden-provider-body hidden-test-api-key'},{status});
+    }});
+    await assert.rejects(client.createConversation(),error=>{
+      assert.equal(error.code,'CREATE_FAILED');
+      assert.match(error.message,new RegExp(`HTTP ${status}`));
+      assert.doesNotMatch(error.message,/hidden-provider-body|hidden-test-api-key/);
+      return true;
+    });
+    assert.equal(creations,1);
+  }
+});
