@@ -22,3 +22,9 @@ Log Vercel 24 jam terakhir berisi 3 request POST /api/conversations dengan HTTP 
 Patch diagnostik: simpan status HTTP upstream numerik pada error; tampilkan status pada CREATE_FAILED dan log aman tanpa response body, key, context, atau transcript. Tidak menambahkan retry/failover. Tests mock mencakup 400/401/402/403/429/500, satu create attempt, no secret leakage. Check, 100 tests, build lulus. Perlu pesan/screenshot error pengguna untuk memastikan akar masalah; tidak menjalankan live test.
 
 Read-only session check menggunakan [List Conversations resmi](https://docs.tavus.io/api-reference/conversations/get-conversations) dengan status=active.
+
+## Koreksi UI error — 4 Oktober 2026
+
+Screenshot pengguna menampilkan pesan generic "Naia belum siap". Ditemukan friendlyCallError di frontend mencocokkan kata profil/config sebelum mempertahankan status provider, sehingga CREATE_FAILED kehilangan HTTP upstream lagi. Mapper sekarang memprioritaskan pola terstruktur "saat membuat sesi (HTTP NNN)" dan hanya menampilkan status numerik; tidak meneruskan body provider atau rahasia. App.js/cache v27. Regression test menjalankan fungsi mapper untuk 400/401/402/403/429/500 dan memastikan tidak berubah menjadi belum siap. 101 tests, check, build lulus.
+
+Audit produksi ulang: aktif Profil 1, naya/drPaws true, seluruh Profil 1–8 autentikasi/PAL/Face berhasil. Belum membuat call untuk mereproduksi; penyebab penolakan provider masih perlu status dari percobaan pengguna, jangan mengklaim sudah memperbaiki kegagalan call.

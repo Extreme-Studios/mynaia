@@ -152,6 +152,8 @@ async function releaseWakeLock() {
 
 function fullscreenActive() { return Boolean(document.fullscreenElement || fullscreenFallback); }
 function friendlyCallError(message = '') {
+  const upstreamStatus = /saat membuat sesi \(HTTP (\d{3})\)/.exec(message)?.[1];
+  if (upstreamStatus) return `Sesi ditolak oleh layanan video (HTTP ${upstreamStatus}). Periksa batas penggunaan atau konfigurasi profil aktif.`;
   if (/microphone|mikrofon|permission|izin/i.test(message)) return `${modeName} membutuhkan akses mikrofon. Periksa izin browser lalu coba lagi.`;
   if (/offline|network|fetch|koneksi/i.test(message)) return 'Koneksi terganggu. Periksa internet lalu coba lagi.';
   if (/PAL|profil|config|konfigurasi/i.test(message)) return `${modeName} belum siap digunakan. Periksa Profil API di Pengaturan.`;
