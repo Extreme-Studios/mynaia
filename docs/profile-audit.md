@@ -28,3 +28,7 @@ Read-only session check menggunakan [List Conversations resmi](https://docs.tavu
 Screenshot pengguna menampilkan pesan generic "Naia belum siap". Ditemukan friendlyCallError di frontend mencocokkan kata profil/config sebelum mempertahankan status provider, sehingga CREATE_FAILED kehilangan HTTP upstream lagi. Mapper sekarang memprioritaskan pola terstruktur "saat membuat sesi (HTTP NNN)" dan hanya menampilkan status numerik; tidak meneruskan body provider atau rahasia. App.js/cache v27. Regression test menjalankan fungsi mapper untuk 400/401/402/403/429/500 dan memastikan tidak berubah menjadi belum siap. 101 tests, check, build lulus.
 
 Audit produksi ulang: aktif Profil 1, naya/drPaws true, seluruh Profil 1–8 autentikasi/PAL/Face berhasil. Belum membuat call untuk mereproduksi; penyebab penolakan provider masih perlu status dari percobaan pengguna, jangan mengklaim sudah memperbaiki kegagalan call.
+
+## Profil 9 — 4 October 2026
+
+Profil 9 ditambahkan dengan key server tersendiri dan credential Windows `api key naya 9`. GET daftar PAL berhasil (HTTP 200). Akun belum memiliki PAL Naia/Dr. Paws, sehingga status sebagian dikonfigurasi; tidak meminjam PAL profil lain. Tidak membuat PAL atau conversation, tidak memakai conversation minutes. Profil aktif tetap.

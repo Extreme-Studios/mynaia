@@ -89,7 +89,7 @@ test('password awal membuka dashboard dan API profil lokal tanpa login kedua', a
     const cookie = login.headers.get('set-cookie').split(';')[0];
     const profiles = await fetch(`${base}/api/admin/tavus-profiles`, { headers: { cookie } });
     assert.equal(profiles.status, 200);
-    assert.equal((await profiles.json()).profiles.length, 8);
+    assert.equal((await profiles.json()).profiles.length, 9);
   } finally {
     server.closeAllConnections(); server.close(); await once(server, 'close');
   }

@@ -17,9 +17,9 @@ async function invoke(handler, method, route, { body, cookie } = {}) {
   return response;
 }
 
-test('delapan profil valid, 0/9 ditolak, dan fallback legacy hanya untuk profil 1', () => {
-  assert.deepEqual(Array.from({ length: 8 }, (_, i) => parseProfile(i + 1)), [1,2,3,4,5,6,7,8]);
-  for (const value of [0,9,'2.5',null,undefined]) assert.throws(() => parseProfile(value));
+test('sembilan profil valid, 0/10 ditolak, dan fallback legacy hanya untuk profil 1', () => {
+  assert.deepEqual(Array.from({ length: 9 }, (_, i) => parseProfile(i + 1)), [1,2,3,4,5,6,7,8,9]);
+  for (const value of [0,10,'2.5',null,undefined]) assert.throws(() => parseProfile(value));
   const env = { TAVUS_API_KEY: 'legacy-secret', TAVUS_NAYA_PAL_ID: 'p-old',
     TAVUS_DR_PAWS_PAL_ID: 'p-paws', TAVUS_DR_PAWS_FACE_ID: 'r-paws',
     TAVUS_PROFILE_2_API_KEY: 'new-secret' };
@@ -108,13 +108,13 @@ test('switch admin hanya mengubah sesi berikutnya; PAL, Face dan key tetap per p
   const login = await invoke(handler, 'POST', 'access-login', { body: { code: 'access-code' } });
   const cookie = login.headers['set-cookie'].split(';')[0];
   const profiles = await invoke(handler, 'GET', 'admin-profiles', { cookie });
-  assert.equal(profiles.body.profiles.length, 8);
+  assert.equal(profiles.body.profiles.length, 9);
   assert.doesNotMatch(JSON.stringify(profiles.body), /key-one|key-two|access-code/);
   const first = await invoke(handler, 'POST', 'conversations', { cookie, body: { mode: 'naya' } });
   assert.equal(first.status, 201);
   assert.deepEqual(calls[0], { type: 'create', key: 'key-one', pal: 'p-naya-one', face: 'r-naya-one',
     mode: 'naya', context: 'same Supabase memory' });
-  const invalid = await invoke(handler, 'POST', 'admin-profile', { cookie, body: { profile: 9 } });
+  const invalid = await invoke(handler, 'POST', 'admin-profile', { cookie, body: { profile: 10 } });
   assert.equal(invalid.status, 400);
   const missing = await invoke(handler, 'POST', 'admin-profile', { cookie, body: { profile: 3 } });
   assert.equal(missing.status, 409);
@@ -148,4 +148,15 @@ test('inspeksi profil hanya membaca Tavus dan respons tidak membawa key', async 
   assert.equal(paths.length, 4);
   assert(paths.every((path) => !/conversations/.test(path)));
   assert.doesNotMatch(JSON.stringify(result), /secret-four/);
+});
+
+test('profil 9 memakai key sendiri tanpa meminjam PAL profil 1 atau membocorkan key', () => {
+  const config = resolveTavusProfile(9, { TAVUS_API_KEY: 'legacy-secret', TAVUS_PAL_ID: 'p-old', TAVUS_PROFILE_9_API_KEY: 'nine-secret' });
+  assert.equal(config.apiKey, 'nine-secret');
+  assert.equal(config.nayaPalId, '');
+  assert.equal(config.drPawsPalId, '');
+  const status = publicProfileStatus(config, 1);
+  assert.equal(status.apiConfigured, true);
+  assert.equal(status.configured, false);
+  assert.doesNotMatch(JSON.stringify(status), /nine-secret|legacy-secret|p-old/);
 });

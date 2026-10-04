@@ -2,7 +2,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { loadRuntimePrompt } from '../app/backend/tavus.mjs';
-import { resolveTavusProfile } from '../app/backend/tavus-profiles.mjs';
+import { PROFILE_COUNT, resolveTavusProfile } from '../app/backend/tavus-profiles.mjs';
 
 if (!process.argv.includes('--apply')) throw new Error('Use --apply to update existing Naia PALs only.');
 process.loadEnvFile(resolve('.env'));
@@ -12,7 +12,7 @@ const backupDir = resolve('tmp', `naia-personality-${stamp}`);
 await mkdir(backupDir, { recursive: true });
 const results = [];
 const seen = new Set();
-for (let profile = 1; profile <= 8; profile++) {
+for (let profile = 1; profile <= PROFILE_COUNT; profile++) {
   const config = resolveTavusProfile(profile);
   if (!config.apiKey || !config.nayaPalId) { results.push({ profile, status: 'unconfigured' }); continue; }
   if (seen.has(config.nayaPalId)) { results.push({ profile, status: 'shared-pal-already-processed' }); continue; }

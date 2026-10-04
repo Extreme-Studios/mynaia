@@ -1,13 +1,13 @@
 import { TavusError } from './tavus.mjs';
 import { StorageError } from './supabase.mjs';
 
-export const PROFILE_COUNT = 8;
+export const PROFILE_COUNT = 9;
 export const ACTIVE_PROFILE_KEY = 'tavus_active_profile';
 
 export function parseProfile(value) {
   const number = Number(value);
   if (!Number.isInteger(number) || number < 1 || number > PROFILE_COUNT || String(value).trim() !== String(number)) {
-    throw new TavusError('INVALID_PROFILE', 'Pilih Profil 1 sampai 8.', 400);
+    throw new TavusError('INVALID_PROFILE', 'Pilih Profil 1 sampai 9.', 400);
   }
   return number;
 }
